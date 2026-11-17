@@ -384,7 +384,6 @@ async function snooze(id, days){
 // email templates
 function emailFor(b, c){
   const n = firstName(c?.name) || 'there';
-  const sig = `\n\nBest,\n${S.user?.displayName || ''}\nSeventy7`;
   const t = {
     'Prospect': [`Seventy7 x ${b.name}`, `Hi ${n},\n\nI'm reaching out from Seventy7, a London creative production studio covering ecommerce photography, campaign, video and full creative production.\n\nWe'd love to show you some recent work that feels close to ${b.name}'s world. Would you be open to a quick chat or a look at our deck?`],
     'Contacted': [`Following up: Seventy7 x ${b.name}`, `Hi ${n},\n\nJust floating this back to the top of your inbox. If you have any shoots coming up, ecommerce or campaign, we'd love to help. Happy to send over our deck or pop in for a coffee.`],
@@ -392,7 +391,7 @@ function emailFor(b, c){
     'Meeting': [`Great to meet: next steps`, `Hi ${n},\n\nThanks again for your time. As discussed, I'll pull together some thoughts and an estimate. Let me know if there's anything else you'd like us to include.`],
     'Proposal': [`Checking in on our proposal`, `Hi ${n},\n\nJust checking in on the proposal we sent over. Happy to talk it through, adjust scope, or answer any questions.`],
   }[b.stage] || [`Seventy7 x ${b.name}`, `Hi ${n},\n\n`];
-  return {subject: t[0], body: t[1] + sig};
+  return {subject: t[0], body: t[1] + '\n\n'};
 }
 function mailto(b, c){
   const e = emailFor(b, c);
