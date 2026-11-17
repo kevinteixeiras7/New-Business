@@ -541,13 +541,13 @@ function renderCompose(){
       ${hookFor(b) ? `<div class="small" style="margin:6px 0;color:var(--blue)">Opens with the radar story: ${esc(b.lastSignal.title)}</div>` : ''}
       <label class="l" style="margin-top:10px">Subject</label><input class="f" id="cp-subject" value="${esc(C.subject)}">
       <label class="l" style="margin-top:10px">Message</label><textarea class="f" id="cp-body" rows="11">${esc(C.body)}</textarea>
-      <div class="small muted" style="margin-top:6px">Words in [square brackets] become clickable links, so no web address shows in the email. Opens are tracked and show on Today. Changing the contact or portfolio resets the text.</div>
-      <div class="acts" style="flex-wrap:wrap"><button class="btn" data-cp="cancel">Cancel</button><span style="flex:1"></span><button class="btn" data-cp="copy">Copy message</button><button class="btn" data-cp="owa">Outlook on the web</button><button class="btn dark" data-cp="mailapp">Open in Outlook</button></div>
+      <div class="small muted" style="margin-top:6px"><b>Open in Outlook</b> fills in the whole email, with the portfolio link on its own line. Prefer the words themselves as the link? Use <b>Copy with named links</b> and paste into a new email. Either way, opens are tracked. Changing the contact or portfolio resets the text.</div>
+      <div class="acts" style="flex-wrap:wrap"><button class="btn" data-cp="cancel">Cancel</button><span style="flex:1"></span><button class="btn" data-cp="copy">Copy with named links</button><button class="btn" data-cp="owa">Outlook on the web</button><button class="btn dark" data-cp="mailapp">Open in Outlook</button></div>
     </div>`;
   } else {
     const after = stageAfterSend(b, C);
     m.innerHTML = `<div class="box">
-      ${C.via ? `<div class="clash soft" style="margin-bottom:14px"><b>The message is copied.</b> ${C.via === 'copy' ? 'Paste it into a new email' : 'Click into the body of the new email and paste'} (Ctrl+V, or ⌘V on a Mac). The portfolio name will be a clickable link.</div>` : ''}
+      ${C.via === 'copy' ? `<div class="clash soft" style="margin-bottom:14px"><b>The message is copied with named links.</b> Paste it into a new email (⌘V on a Mac, Ctrl+V on Windows). The portfolio name will be a clickable link.</div>` : ''}
       <h3>Did you send it?</h3>
       <p class="small muted" style="margin-top:-6px">If you did, I'll log it on ${esc(b.name)}${after !== b.stage ? ` and move it to <b>${esc(after)}</b>` : ''}.</p>
       <label class="l">Next follow-up</label><input type="date" class="f" id="cp-next" value="${nextForStage(after) || addDays(today(), 7)}">
@@ -572,11 +572,10 @@ async function composeAction(act){
   const c = b.contacts[C.ci];
   if (['copy','mailapp','owa'].includes(act)){
     // Clipboard and new-tab must happen straight from the click, before anything is awaited
-    const copied = copyRich(C);
-    if (act === 'owa') window.open(`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(c.email)}&subject=${encodeURIComponent(C.subject)}`, '_blank', 'noopener');
-    if (act === 'mailapp') location.href = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(C.subject)}`;
-    const ok = await copied;
-    if (!ok){ toast('The browser blocked copying. Use Copy message instead.'); }
+    const plain = richBody(C).text;
+    if (act === 'copy'){ const ok = await copyRich(C); if (!ok) toast('The browser blocked copying'); }
+    if (act === 'owa') window.open(`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(c.email)}&subject=${encodeURIComponent(C.subject)}&body=${encodeURIComponent(plain)}`, '_blank', 'noopener');
+    if (act === 'mailapp') location.href = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(C.subject)}&body=${encodeURIComponent(plain)}`;
     await saveLinks(C, b, c);
     C.via = act; C.step = 2; setTimeout(renderCompose, act === 'mailapp' ? 300 : 0); return;
   }
@@ -602,7 +601,7 @@ function richBody(C){
   links.forEach(([tok, url]) => {
     const label = tok.slice(1, -1);
     html = html.split(esc(tok)).join(`<a href="${url}">${esc(label)}</a>`);
-    text = text.split(tok).join(`${label} (${url})`);
+    text = text.split('\n').map(line => line.includes(tok) ? line.split(tok).join(label) + '\n' + url : line).join('\n');
   });
   html = html.replace(/\n/g, '<br>');
   return {html: `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;color:#000">${html}</div>`, text};
