@@ -762,7 +762,7 @@ function ago(isoStr){
 function render(){
   if (!S.user){ return renderLogin(); }
   const dueCount = S.brands.filter(b => b.nextFollowUp && b.nextFollowUp <= today() && !['Won','Lost','Paused'].includes(b.stage)).length;
-  const newSig = S.signals.filter(s => s.status === 'new').length;
+  const newSig = groupSigs(S.signals.filter(s => s.status === 'new')).length;
   const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['clients','Clients'],['radar','Radar',newSig],['dashboard','Dashboard']];
   if (S.isAdmin) navs.push(['admin','Admin']);
   const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', clients:'Client directory', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
@@ -844,7 +844,7 @@ function vToday(){
   const ready = S.brands.filter(b => b.stage === 'Prospect' && (b.contacts||[]).some(c => c.email) && !clientMatch(b)?.current)
     .sort((a,b) => (pr[a.priority]??1) - (pr[b.priority]??1) || a.name.localeCompare(b.name)).slice(0, 6);
   const needsContact = S.brands.filter(b => b.stage === 'Prospect' && !(b.contacts||[]).some(c => c.email)).length;
-  const sigs = S.signals.filter(s => s.status === 'new').sort((a,b) => b.score - a.score).slice(0, 5);
+  const sigs = S.signals.filter(s => s.status === 'new').sort((a,b) => b.score - a.score).slice(0, 30);
   const meetings = S.brands.filter(b => b.stage === 'Meeting').length, props = S.brands.filter(b => b.stage === 'Proposal').length;
 
   return `
@@ -869,7 +869,7 @@ function vToday(){
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card">
         <div class="panel-h"><h3>Fresh on the radar</h3><button class="btn sm ghost" data-nav="radar">See all</button></div>
-        ${sigs.length ? sigs.map(s => sigRow(s, true)).join('') : `<div class="empty">${S.signals.length ? 'No new signals. The radar scans every morning at 7am.' : "The news radar isn't switched on yet."}</div>`}
+        ${sigs.length ? groupSigs(sigs).slice(0, 5).map(radarRow).join('') : `<div class="empty">${S.signals.length ? 'No new signals. The radar scans every morning at 7am.' : "The news radar isn't switched on yet."}</div>`}
       </div>
       <div class="card">
         <div class="panel-h"><h3>Ready to contact</h3><span class="small muted">${needsContact} more need a contact</span></div>
