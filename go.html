@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Seventy7</title>
+<style>
+  html,body{margin:0;height:100%;background:#141414;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  .box{min-height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+  h1{font-size:28px;letter-spacing:-.02em;margin:0 0 8px}
+  p{color:#a8a6a0;margin:0}
+  a{color:#fff}
+</style>
+</head>
+<body>
+<div class="box"><div><h1>Seventy7</h1><p id="msg">Opening…</p></div></div>
+<script type="module">
+// Records that a portfolio link was opened, then forwards to the file.
+// Only links created in the New Business app exist, and they can only point to Google Drive.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDgNuLr64RTZlqldTDzKA_pB2mef5YSn6c",
+  authDomain: "seventy7-newbiz.firebaseapp.com",
+  projectId: "seventy7-newbiz",
+  storageBucket: "seventy7-newbiz.firebasestorage.app",
+  messagingSenderId: "348639725848",
+  appId: "1:348639725848:web:152f9fb4de98fac576f66d"
+};
+const msg = document.getElementById('msg');
+const id = new URLSearchParams(location.search).get('d') || '';
+const go = url => location.replace(url);
+const dead = () => { msg.textContent = 'This link is no longer available. Please get in touch with your Seventy7 contact.'; };
+
+(async () => {
+  if (!/^[a-z0-9]{6,20}$/.test(id)) return dead();
+  try {
+    const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+    const [{initializeApp}, F] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-firestore.js')]);
+    const db = F.getFirestore(initializeApp(FIREBASE_CONFIG));
+    const snap = await F.getDoc(F.doc(db, 'links', id));
+    if (!snap.exists()) return dead();
+    const url = snap.data().url;
+    // Log the open, but never keep someone waiting more than 1.5s for it
+    await Promise.race([
+      F.addDoc(F.collection(db, 'clicks'), {link: id, at: F.serverTimestamp(), ua: navigator.userAgent.slice(0, 280)}).catch(() => {}),
+      new Promise(r => setTimeout(r, 1500)),
+    ]);
+    go(url);
+  } catch (e) {
+    dead();
+  }
+})();
+</script>
+</body>
+</html>

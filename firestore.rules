@@ -50,5 +50,30 @@ service cloud.firestore {
     match /settings/{id} {
       allow read, write: if isTeam();
     }
+
+    // Tracked portfolio links. Anyone holding a link id can look up where it goes
+    // (that is how go.html forwards them), but nobody outside the team can list them.
+    // Links may only point at Google Drive, so they can't be used as an open redirect.
+    match /links/{id} {
+      allow get: if true;
+      allow list: if isTeam();
+      allow create: if isTeam()
+        && request.resource.data.url is string
+        && request.resource.data.url.matches('https://drive[.]google[.]com/file/d/[A-Za-z0-9_-]+/view')
+        && request.resource.data.brandId is string;
+      allow update: if isTeam()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sent','sentAt']);
+    }
+
+    // One record per open, written by go.html. Write-only from outside; only the team can read.
+    match /clicks/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['link','at','ua'])
+        && request.resource.data.link is string
+        && request.resource.data.link.size() < 30
+        && request.resource.data.at == request.time
+        && (!('ua' in request.resource.data) || (request.resource.data.ua is string && request.resource.data.ua.size() <= 300))
+        && exists(/databases/$(database)/documents/links/$(request.resource.data.link));
+      allow read: if isTeam();
+    }
   }
 }

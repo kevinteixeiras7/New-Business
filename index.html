@@ -158,6 +158,10 @@ table.t tr.click:hover td{background:#fbfaf8}
 .modal .box{background:#fff;border-radius:12px;width:min(520px,92vw);padding:20px 22px;box-shadow:var(--shadow)}
 .modal h3{margin:0 0 14px}
 .modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.reasons{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.reasons label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.hotrow b{font-weight:600}
+.hot-dot{width:8px;height:8px;border-radius:50%;background:var(--hot);flex-shrink:0;box-shadow:0 0 0 4px var(--hot-bg)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:9px;z-index:80;font-weight:500;box-shadow:var(--shadow)}
 
 /* login */
@@ -216,6 +220,38 @@ const CADENCE = {'Contacted':7,'Portfolio Sent':10,'Meeting':3,'Proposal':7};
 const SECTORS = ['Womens Fashion','Mens Fashion','Beauty','Sportswear','Accessories','Jewellery','Kidswear','Interiors','Other'];
 const PRIORITIES = ['High','Medium','Low'];
 const TOUCH_TYPES = ['Email','Call','LinkedIn','Meeting','Note'];
+const WON_REASONS = ['Quality of work','Price','Turnaround / speed','Relationship / referral','Availability / capacity','Full-service offer','Test shoot went well','Other'];
+const LOST_REASONS = ['Price','Went with another studio','Kept in-house','No budget / timing','No response','Not the right fit','Other'];
+
+// Portfolio decks (Google Drive, shared "anyone with the link")
+const DRIVE_URL = id => `https://drive.google.com/file/d/${id}/view`;
+const DECKS = [
+  {key:'womenswear', name:'Womenswear & Accessories portfolio', id:'15Wh3644EjugYlmtkUgGj8inHHyPTDpvQ', sectors:['Womens Fashion']},
+  {key:'menswear',   name:'Menswear portfolio',    id:'1FHJEW0sHi2bPxzZrxh6t1qolneFBCkf_', sectors:['Mens Fashion']},
+  {key:'beauty',     name:'Beauty portfolio',      id:'1qdF-bbmU01fcH7PBqgZBd8rN7lFwPtiw', sectors:['Beauty']},
+  {key:'sportswear', name:'Sportswear portfolio',  id:'1ki0i6MjKEe053juk-n605PvUGqO5NSXy', sectors:['Sportswear']},
+  {key:'accessories',name:'Accessories portfolio', id:'1BWJxTI2h2-ptR_bmqzb_AKuAjYh5Rzoa', sectors:['Accessories']},
+  {key:'jewellery',  name:'Jewellery portfolio',   id:'112GEyzfWPVwBUb91joofSdomMHNa8FGq', sectors:['Jewellery']},
+  {key:'kids',       name:'Kids portfolio',        id:'1ZRQK-GWXEyTzPF3zuKrUA6-x4aA7kKVN', sectors:['Kidswear']},
+  {key:'interiors',  name:'Interiors portfolio',   id:'1iGGH3vElg7HeDkkZ1J2hAXFyk3VSIi0m', sectors:['Interiors']},
+  {key:'luxury',     name:'Luxury portfolio',      id:'1PRmJN9cBg6oiAsYjfxKIuG8a3ae9Jy25', sectors:[]},
+  {key:'all',        name:'All services overview', id:'1ZRLFjd8QdpPPMNFfDwcR_CZoIo12PnFy', sectors:['Other']},
+];
+const SHOWREEL = {key:'showreel', name:'Showreel', id:'1Ol1zp57YaHO9FnBb2FfkLQVj3GrVdqOw'};
+const deckByKey = k => k === 'showreel' ? SHOWREEL : DECKS.find(d => d.key === k);
+const suggestedDeck = b => (DECKS.find(d => d.sectors.includes(b.sector)) || deckByKey('all')).key;
+const GO_BASE = location.origin + location.pathname.replace(/[^/]*$/, '') + 'go.html?d=';
+const linkId = () => Array.from(crypto.getRandomValues(new Uint8Array(9)), x => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
+const BOT_UA = /bot|crawl|spider|preview|scan|safelinks|mimecast|barracuda|proofpoint|headless|python|curl|wget|google-safety/i;
+const HOOKS = {
+  Appointment: b => `I saw the news about the new appointment at ${b.name}, congratulations to the team.`,
+  Rebrand: b => `Loved seeing the new direction at ${b.name}, it looks great.`,
+  Launch: b => `Congratulations on the latest launch at ${b.name}.`,
+  Funding: b => `Congratulations on the investment news, exciting times for ${b.name}.`,
+  Expansion: b => `Congratulations on the expansion, great to see ${b.name} growing.`,
+  Agency: b => `I saw ${b.name} may be looking at creative partners, so the timing felt right to say hello.`,
+  News: b => `I saw ${b.name} in the news recently and wanted to say hello.`,
+};
 
 // ---------- helpers ----------
 const $ = s => document.querySelector(s);
@@ -253,7 +289,7 @@ function toast(msg){
 const S = {
   user:null, isAdmin:false, brands:[], signals:[], view:'today', open:null, editingContact:null,
   f:{ sector:'', stage:'', prio:'', q:'', sort:'nextFollowUp', dir:1, showPaused:false, sigType:'', sigStatus:'new' },
-  radar:null, scanning:false
+  radar:null, scanning:false, links:[], clicks:[]
 };
 const byId = id => S.brands.find(b => b.id === id);
 
@@ -286,6 +322,23 @@ async function firebaseStore(){
       unsubs.push(F.onSnapshot(F.collection(db,'brands'), snap => onBrands(snap.docs.map(d => ({id:d.id, ...d.data()}))), onErr));
       unsubs.push(F.onSnapshot(F.query(F.collection(db,'signals'), F.orderBy('createdAt','desc'), F.limit(400)),
         snap => onSignals(snap.docs.map(d => ({id:d.id, ...d.data()}))), onErr));
+    },
+    listenEngagement(onLinks, onClicks){
+      unsubs.push(F.onSnapshot(F.query(F.collection(db,'links'), F.orderBy('createdAt','desc'), F.limit(1000)),
+        snap => onLinks(snap.docs.map(d => ({id:d.id, ...d.data()}))), e => console.warn('links', e.code)));
+      unsubs.push(F.onSnapshot(F.query(F.collection(db,'clicks'), F.orderBy('at','desc'), F.limit(1000)),
+        snap => onClicks(snap.docs.map(d => { const x = d.data(); return {id:d.id, link:x.link, ua:x.ua || '', at: x.at && x.at.toDate ? x.at.toDate().toISOString() : new Date().toISOString()}; })),
+        e => console.warn('clicks', e.code)));
+    },
+    async createLinks(list){
+      const batch = F.writeBatch(db);
+      list.forEach(({id, ...r}) => batch.set(F.doc(db,'links',id), r));
+      await batch.commit();
+    },
+    async markSent(ids){
+      const batch = F.writeBatch(db);
+      ids.forEach(id => batch.update(F.doc(db,'links',id), {sent:true, sentAt: now()}));
+      await batch.commit();
     },
     async update(id, patch, entry){
       const data = {...patch, updatedAt: now()};
@@ -328,12 +381,16 @@ async function demoStore(){
   seed.signals.forEach(x => { x.published = addDays(x.published.slice(0,10), shift) + 'T08:00:00Z'; x.createdAt = new Date().toISOString(); });
   let brands = seed.brands.map(b => ({...b}));
   let signals = (seed.signals || []).map(s => ({...s}));
-  let ob, os;
-  const emit = () => { ob && ob(brands.map(b => ({...b}))); os && os(signals.map(s => ({...s}))); };
+  let links = (seed.links || []).map(l => ({...l})), clicks = (seed.clicks || []).map(c => ({...c}));
+  let ob, os, ol, oc;
+  const emit = () => { ob && ob(brands.map(b => ({...b}))); os && os(signals.map(s => ({...s}))); ol && ol(links.map(l => ({...l}))); oc && oc(clicks.map(c => ({...c}))); };
   return {
     onAuth(cb){ setTimeout(() => cb({displayName:'Kevin Teixeira', email:'kevin.teixeira@seventy7group.com'}), 0); },
     signIn(){}, signOut(){ location.reload(); },
     listen(a, b){ ob = a; os = b; emit(); },
+    listenEngagement(a, b){ ol = a; oc = b; emit(); },
+    async createLinks(list){ links = [...list, ...links]; emit(); },
+    async markSent(ids){ links = links.map(l => ids.includes(l.id) ? {...l, sent:true} : l); emit(); },
     async update(id, patch, entry){ brands = brands.map(b => b.id === id ? {...b, ...patch, log: entry ? [...(b.log||[]), entry] : b.log} : b); emit(); },
     async create(b){ if (brands.some(x => x.id === b.id)) b.id += '-' + uid().slice(0,4); brands.push(b); emit(); return b.id; },
     async remove(id){ brands = brands.filter(b => b.id !== id); emit(); },
@@ -353,6 +410,21 @@ const entry = (type, text, date = today()) => ({id: uid(), date, type, text, by:
 async function setStage(id, stage){
   const b = byId(id); if (!b || b.stage === stage) return;
   const patch = {stage, nextFollowUp: nextForStage(stage)};
+  if (stage === 'Won' || stage === 'Lost'){
+    const reasons = stage === 'Won' ? WON_REASONS : LOST_REASONS;
+    modal(`<h3>${stage === 'Won' ? 'Nice one. Why did we win' : 'Why did we lose'} ${esc(b.name)}?</h3>
+      <label class="l">Main reason</label>
+      <div class="reasons">${reasons.map((r, i) => `<label><input type="radio" name="m-reason" value="${esc(r)}" ${i === 0 ? 'checked' : ''}> ${esc(r)}</label>`).join('')}</div>
+      <label class="l" style="margin-top:12px">Anything to add? (optional)</label><input class="f" id="m-note" placeholder="${stage === 'Won' ? 'e.g. loved the Beauty deck, test shoot sealed it' : 'e.g. went with a cheaper studio in Manchester'}">`,
+      async () => {
+        const reason = document.querySelector('input[name="m-reason"]:checked')?.value || 'Other';
+        const note = $('#m-note').value.trim();
+        patch.outcome = {result: stage, reason, note, date: today(), by: me()};
+        await store.update(id, patch, entry('Stage', `${b.stage} → ${stage}: ${reason}${note ? ' (' + note + ')' : ''}`));
+        toast(`${b.name} marked ${stage}`);
+      }, `Mark ${stage}`);
+    return;
+  }
   await store.update(id, patch, entry('Stage', `${b.stage} → ${stage}`));
   toast(`${b.name} moved to ${stage}`);
 }
@@ -381,21 +453,130 @@ async function snooze(id, days){
   toast(`Snoozed to ${fmtD(d)}`);
 }
 
-// email templates
-function emailFor(b, c){
-  const n = firstName(c?.name) || 'there';
-  const t = {
-    'Prospect': [`Seventy7 x ${b.name}`, `Hi ${n},\n\nI'm reaching out from Seventy7, a London creative production studio covering ecommerce photography, campaign, video and full creative production.\n\nWe'd love to show you some recent work that feels close to ${b.name}'s world. Would you be open to a quick chat or a look at our deck?`],
-    'Contacted': [`Following up: Seventy7 x ${b.name}`, `Hi ${n},\n\nJust floating this back to the top of your inbox. If you have any shoots coming up, ecommerce or campaign, we'd love to help. Happy to send over our deck or pop in for a coffee.`],
-    'Portfolio Sent': [`Any upcoming shoots at ${b.name}?`, `Hi ${n},\n\nHope you had a chance to look through our portfolio. Are there any upcoming launches or seasonal shoots we could quote on? Even a small test shoot is a great way to see how we work.`],
-    'Meeting': [`Great to meet: next steps`, `Hi ${n},\n\nThanks again for your time. As discussed, I'll pull together some thoughts and an estimate. Let me know if there's anything else you'd like us to include.`],
-    'Proposal': [`Checking in on our proposal`, `Hi ${n},\n\nJust checking in on the proposal we sent over. Happy to talk it through, adjust scope, or answer any questions.`],
-  }[b.stage] || [`Seventy7 x ${b.name}`, `Hi ${n},\n\n`];
-  return {subject: t[0], body: t[1] + '\n\n'};
+// ---------- email composer ----------
+const MAIN_TEXT = {
+  'Prospect': (b, deck) => `I'm reaching out from Seventy7, a London creative production studio covering ecommerce photography, campaign, video and full creative production.\n\nWe'd love to show you some recent work that feels close to ${b.name}'s world.${deck ? '' : ' Would you be open to a quick chat or a look at our portfolio?'}`,
+  'Contacted': (b, deck) => `Just floating this back to the top of your inbox. If you have any shoots coming up, ecommerce or campaign, we'd love to help.${deck ? '' : ' Happy to send over our portfolio or pop in for a coffee.'}`,
+  'Portfolio Sent': b => `Hope you had a chance to look through our work. Are there any upcoming launches or seasonal shoots we could quote on? Even a small test shoot is a great way to see how we work.`,
+  'Meeting': b => `Thanks again for your time. As discussed, I'll pull together some thoughts and an estimate. Let me know if there's anything else you'd like us to include.`,
+  'Proposal': b => `Just checking in on the proposal we sent over. Happy to talk it through, adjust scope, or answer any questions.`,
+};
+const SUBJECTS = {
+  'Prospect': b => `Seventy7 x ${b.name}`, 'Contacted': b => `Following up: Seventy7 x ${b.name}`,
+  'Portfolio Sent': b => `Any upcoming shoots at ${b.name}?`, 'Meeting': b => `Great to meet: next steps`, 'Proposal': b => `Checking in on our proposal`,
+};
+function hookFor(b){
+  const sg = b.lastSignal;
+  if (!sg || !sg.date || daysBetween(sg.date, today()) > 45) return '';
+  return (HOOKS[sg.type] || HOOKS.News)(b);
 }
-function mailto(b, c){
-  const e = emailFor(b, c);
-  return `mailto:${encodeURIComponent(c?.email || '')}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`;
+function buildEmail(C){
+  const b = byId(C.brandId), c = (b.contacts || [])[C.ci] || {};
+  const deck = C.deck ? deckByKey(C.deck) : null;
+  const n = firstName(c.name) || 'there';
+  const hook = hookFor(b);
+  const main = (MAIN_TEXT[b.stage] || MAIN_TEXT.Contacted)(b, deck);
+  let body = `Hi ${n},\n\n` + (hook ? hook + '\n\n' : '') + main;
+  if (deck) body += `\n\nHere's our ${deck.name} for a flavour of our work:\n${GO_BASE}${C.ids.deck}`;
+  if (C.reel) body += `\n\n${deck ? 'And our' : 'Here\'s our'} showreel:\n${GO_BASE}${C.ids.reel}`;
+  return {subject: (SUBJECTS[b.stage] || SUBJECTS.Contacted)(b), body: body + '\n\n', contact: c, deck};
+}
+function openCompose(brandId, ci){
+  const b = byId(brandId); if (!b) return;
+  const withEmail = (b.contacts || []).map((c, i) => ({c, i})).filter(x => x.c.email);
+  if (!withEmail.length){ toast('Add an email address for a contact first'); openBrand(brandId); return; }
+  const C = {brandId, ci: ci != null && b.contacts[ci]?.email ? ci : withEmail[0].i, deck: b.deck || suggestedDeck(b), reel: false,
+    ids: {deck: linkId(), reel: linkId()}, step: 1};
+  S.compose = C;
+  const e = buildEmail(C); C.subject = e.subject; C.body = e.body;
+  renderCompose();
+}
+function renderCompose(){
+  document.querySelector('.modal.compose')?.remove();
+  const C = S.compose; if (!C) return;
+  const b = byId(C.brandId);
+  const m = document.createElement('div'); m.className = 'modal compose';
+  if (C.step === 1){
+    const sug = suggestedDeck(b);
+    m.innerHTML = `<div class="box" style="width:min(640px,94vw)">
+      <h3>Email ${esc(b.name)}</h3>
+      <div class="grid2">
+        <div><label class="l">To</label><select class="f" id="cp-to">${(b.contacts||[]).map((c, i) => c.email ? `<option value="${i}" ${i===C.ci?'selected':''}>${esc(c.name || c.email)}${c.title ? ' · ' + esc(c.title) : ''}</option>` : '').join('')}</select></div>
+        <div><label class="l">Portfolio</label><select class="f" id="cp-deck"><option value="">No portfolio</option>${DECKS.map(d => `<option value="${d.key}" ${C.deck===d.key?'selected':''}>${esc(d.name)}${d.key===sug?' (suggested)':''}</option>`).join('')}</select></div>
+      </div>
+      <label class="small" style="display:block;margin:10px 0 2px"><input type="checkbox" id="cp-reel" ${C.reel?'checked':''}> Include the showreel</label>
+      ${hookFor(b) ? `<div class="small" style="margin:6px 0;color:var(--blue)">Opens with the radar story: ${esc(b.lastSignal.title)}</div>` : ''}
+      <label class="l" style="margin-top:10px">Subject</label><input class="f" id="cp-subject" value="${esc(C.subject)}">
+      <label class="l" style="margin-top:10px">Message</label><textarea class="f" id="cp-body" rows="11">${esc(C.body)}</textarea>
+      <div class="small muted" style="margin-top:6px">Links are tracked: when they open the portfolio, it shows on Today. Changing the contact or portfolio resets the text.</div>
+      <div class="acts"><button class="btn" data-cp="cancel">Cancel</button><button class="btn" data-cp="copy">Copy text</button><button class="btn dark" data-cp="open">Open in mail app</button></div>
+    </div>`;
+  } else {
+    const after = stageAfterSend(b, C);
+    m.innerHTML = `<div class="box">
+      <h3>Did you send it?</h3>
+      <p class="small muted" style="margin-top:-6px">If you did, I'll log it on ${esc(b.name)}${after !== b.stage ? ` and move it to <b>${esc(after)}</b>` : ''}.</p>
+      <label class="l">Next follow-up</label><input type="date" class="f" id="cp-next" value="${nextForStage(after) || addDays(today(), 7)}">
+      <div class="acts"><button class="btn" data-cp="notsent">No, not sent</button><button class="btn dark" data-cp="sent">Yes, log it</button></div>
+    </div>`;
+  }
+  document.body.appendChild(m);
+}
+function stageAfterSend(b, C){
+  if (C.deck && ['Prospect','Contacted'].includes(b.stage)) return 'Portfolio Sent';
+  if (b.stage === 'Prospect') return 'Contacted';
+  return b.stage;
+}
+async function composeAction(act){
+  const C = S.compose; if (!C) return;
+  const b = byId(C.brandId);
+  if (act === 'cancel'){ S.compose = null; renderCompose(); return; }
+  if (C.step === 1){ C.subject = $('#cp-subject').value; C.body = $('#cp-body').value; }
+  const c = b.contacts[C.ci];
+  if (act === 'copy'){
+    try { await navigator.clipboard.writeText(`To: ${c.email}\nSubject: ${C.subject}\n\n${C.body}`); toast('Copied'); } catch { toast('Copy blocked by the browser'); }
+    await saveLinks(C, b, c);
+    C.step = 2; renderCompose(); return;
+  }
+  if (act === 'open'){
+    await saveLinks(C, b, c);
+    location.href = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(C.subject)}&body=${encodeURIComponent(C.body)}`;
+    C.step = 2; setTimeout(renderCompose, 300); return;
+  }
+  if (act === 'notsent'){ S.compose = null; renderCompose(); return; }
+  if (act === 'sent'){
+    const after = stageAfterSend(b, C);
+    const next = $('#cp-next').value || null;
+    if (C.saved?.length) await store.markSent(C.saved);
+    const what = [C.deck && C.body.includes(C.ids.deck) ? deckByKey(C.deck).name : '', C.reel && C.body.includes(C.ids.reel) ? 'showreel' : ''].filter(Boolean).join(' + ');
+    const patch = {lastContact: today(), nextFollowUp: next};
+    if (after !== b.stage) patch.stage = after;
+    if (C.deck && C.deck !== suggestedDeck(b)) patch.deck = C.deck;
+    await store.update(b.id, patch, {...entry('Email', `Emailed ${c.name || c.email}${what ? ': ' + what : ''}`), links: C.saved || []});
+    S.compose = null; renderCompose(); toast('Logged');
+  }
+}
+async function saveLinks(C, b, c){
+  if (C.saved) return;
+  const base = {brandId: b.id, brand: b.name, contact: c.name || c.email, sector: b.sector, stage: b.stage, sent: false, createdBy: me(), createdAt: new Date().toISOString()};
+  const list = [];
+  if (C.deck && C.body.includes(C.ids.deck)){ const d = deckByKey(C.deck); list.push({id: C.ids.deck, ...base, deck: d.key, deckName: d.name, url: DRIVE_URL(d.id)}); }
+  if (C.reel && C.body.includes(C.ids.reel)) list.push({id: C.ids.reel, ...base, deck: 'showreel', deckName: 'Showreel', url: DRIVE_URL(SHOWREEL.id)});
+  if (list.length){ try { await store.createLinks(list); } catch (err){ console.warn(err); toast('Links not tracked: ' + (err.code || err.message)); } }
+  C.saved = list.map(l => l.id);
+}
+
+// ---------- engagement ----------
+function opens(){
+  const L = new Map(S.links.map(l => [l.id, l]));
+  return S.clicks.map(c => ({...c, l: L.get(c.link)}))
+    .filter(x => x.l && !BOT_UA.test(x.ua) && (Date.parse(x.at) - Date.parse(x.l.createdAt)) > 60000);
+}
+function ago(isoStr){
+  const m = Math.round((Date.now() - Date.parse(isoStr)) / 60000);
+  if (m < 60) return `${Math.max(1, m)}m ago`;
+  const h = Math.round(m / 60); if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
 }
 
 // ===================================================================
@@ -454,8 +635,24 @@ function brandRow(b, opts = {}){
       ${opts.quick ? `<button class="btn sm" data-chased="${b.id}" title="Log a follow-up email and set the next date">Chased</button>
       <button class="btn sm ghost" data-snooze="${b.id}" data-days="2" title="Snooze 2 working days">+2d</button>
       <button class="btn sm ghost" data-snooze="${b.id}" data-days="7" title="Snooze a week">+1w</button>` : ''}
-      ${opts.email && c?.email ? `<a class="btn sm" href="${mailto(b,c)}" data-mailed="${b.id}">Email</a>` : ''}
+      ${opts.email && (b.contacts||[]).some(x => x.email) ? `<button class="btn sm" data-compose="${b.id}">Email</button>` : ''}
     </div>
+  </div>`;
+}
+
+function hotPanel(){
+  const week = Date.now() - 7 * 864e5, seen = new Set();
+  const list = opens().filter(o => Date.parse(o.at) > week).sort((a, b) => b.at.localeCompare(a.at))
+    .filter(o => { const k = o.l.brandId + '|' + o.l.contact; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8);
+  if (!list.length) return '';
+  return `<div class="card" style="border-color:#f3c9b3">
+    <div class="panel-h"><h3>Opened your portfolio</h3><span class="small muted">Best moment to call</span></div>
+    ${list.map(o => { const b = byId(o.l.brandId); const n = opens().filter(x => x.link === o.link).length; return `<div class="row hotrow">
+      <span class="hot-dot"></span>
+      <div class="who" data-open="${o.l.brandId}"><b>${esc(firstName(o.l.contact))} at ${esc(o.l.brand)}</b>
+        <span>opened the ${esc(o.l.deckName)} ${ago(o.at)}${n > 1 ? ` · ${n} opens` : ''}${b ? ' · ' + esc(b.stage) : ''}</span></div>
+      <div class="acts"><button class="btn sm" data-open="${o.l.brandId}">Log a call</button></div>
+    </div>`; }).join('')}
   </div>`;
 }
 
@@ -481,6 +678,7 @@ function vToday(){
   </div>
   <div class="today">
     <div style="display:flex;flex-direction:column;gap:18px">
+      ${hotPanel()}
       <div class="card">
         <div class="panel-h"><h3>Chase today</h3><span class="small muted">Chased logs it and sets the next date</span></div>
         ${due.length ? due.map(b => brandRow(b, {quick:true})).join('') : '<div class="empty">Nothing due. Nice.</div>'}
@@ -623,7 +821,7 @@ async function sigAdd(id){
   const s = S.signals.find(x => x.id === id); if (!s) return;
   if (s.brandId && byId(s.brandId)){
     const b = byId(s.brandId);
-    await store.update(b.id, {nextFollowUp: today(), priority: b.priority === 'Low' ? 'Medium' : b.priority}, entry('Signal', `${s.type}: ${s.title}`));
+    await store.update(b.id, {nextFollowUp: today(), priority: b.priority === 'Low' ? 'Medium' : b.priority, lastSignal: {type: s.type, title: s.title, link: s.link, date: today()}}, entry('Signal', `${s.type}: ${s.title}`));
     await store.updateSignal(id, {status:'added', handledBy: me(), handledAt: new Date().toISOString()});
     openBrand(b.id); toast('Added to today\'s chase list');
     return;
@@ -638,15 +836,35 @@ async function sigAdd(id){
       const name = $('#m-name').value.trim(); if (!name) return false;
       const existing = S.brands.find(b => b.name.toLowerCase() === name.toLowerCase());
       let bid;
-      if (existing){ bid = existing.id; await store.update(bid, {nextFollowUp: today()}, entry('Signal', `${s.type}: ${s.title}`)); }
-      else bid = await store.create(newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, nextFollowUp: today(),
-        notes: `Found via radar: ${s.title}\n${s.link}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}));
+      const lastSignal = {type: s.type, title: s.title, link: s.link, date: today()};
+      if (existing){ bid = existing.id; await store.update(bid, {nextFollowUp: today(), lastSignal}, entry('Signal', `${s.type}: ${s.title}`)); }
+      else bid = await store.create({...newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, nextFollowUp: today(),
+        notes: `Found via radar: ${s.title}\n${s.link}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}), lastSignal});
       await store.updateSignal(id, {status:'added', brandId: bid, handledBy: me(), handledAt: new Date().toISOString()});
       toast(`${name} added`); setTimeout(() => openBrand(bid), 200);
     }, 'Add');
 }
 
 // ---------- Dashboard ----------
+function linkStatsCard(){
+  const sent = S.links.filter(l => l.sent);
+  const openedIds = new Set(opens().map(o => o.link));
+  const row = (label, L) => { const o = L.filter(l => openedIds.has(l.id)).length; const pct = L.length ? Math.round(o / L.length * 100) : 0;
+    return `<div class="fr"><span>${esc(label)}</span><div class="bar"><i style="width:${pct}%"></i></div><b>${pct}%</b></div>`; };
+  const group = key => [...new Set(sent.map(l => l[key]))].map(k => [k, sent.filter(l => l[key] === k)]).sort((a, b) => b[1].length - a[1].length);
+  return `<div class="card"><div class="panel-h"><h3>Portfolio open rate</h3><span class="small muted">${sent.length} sent · ${sent.filter(l => openedIds.has(l.id)).length} opened</span></div>
+    <div class="funnel" style="padding:8px 0">${sent.length ? row('All links', sent) + group('deckName').map(([k, L]) => row(k, L)).join('') : '<div class="empty">Send a portfolio from the Email button to start tracking.</div>'}</div>
+    ${sent.length ? `<div class="panel-h" style="border-top:1px solid var(--line2)"><h3>By sector</h3></div><div class="funnel" style="padding:8px 0">${group('sector').map(([k, L]) => row(k, L)).join('')}</div>` : ''}
+  </div>`;
+}
+function outcomeCard(){
+  const done = S.brands.filter(b => b.outcome);
+  const count = res => { const m = {}; done.filter(b => b.outcome.result === res).forEach(b => m[b.outcome.reason] = (m[b.outcome.reason] || 0) + 1); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+  const list = (res, cls) => { const c = count(res); return c.length ? c.map(([r, n]) => `<div class="row" style="padding:8px 16px"><span style="flex:1">${esc(r)}</span><span class="chip ${cls}">${n}</span></div>`).join('') : '<div class="empty" style="padding:14px">None yet</div>'; };
+  return `<div class="card"><div class="panel-h"><h3>Why we win and lose</h3></div>
+    <div class="group-label">Won</div>${list('Won', 'ok')}<div class="group-label">Lost</div>${list('Lost', 'hot')}</div>`;
+}
+
 function vDash(){
   const B = S.brands;
   const cnt = st => B.filter(b => b.stage === st).length;
@@ -685,6 +903,8 @@ function vDash(){
     <div class="card"><div class="panel-h"><h3>Biggest opportunities</h3></div>
       ${B.filter(b => ['Meeting','Proposal'].includes(b.stage)).map(b => `<div class="row"><div class="who" data-open="${b.id}"><b>${esc(b.name)}</b><span>${esc([b.budget, b.opportunity, b.shootType].filter(Boolean).join(' · ') || b.sector)}</span></div>${stageChip(b.stage)}</div>`).join('') || '<div class="empty">No meetings or proposals yet.</div>'}
     </div>
+    ${linkStatsCard()}
+    ${outcomeCard()}
   </div>`;
 }
 
@@ -720,6 +940,14 @@ function newBrand(p){
   return {id: slug(p.name), name: p.name, sector: p.sector || 'Other', website: '', stage: 'Prospect', priority: p.priority || 'Medium',
     lastContact: null, nextFollowUp: p.nextFollowUp || null, contacts: [], notes: p.notes || '', budget:'', opportunity:'', shootType:'', campaignType:'', log: p.log || []};
 }
+function engagementLine(b){
+  const L = S.links.filter(l => l.brandId === b.id && l.sent);
+  if (!L.length) return '';
+  const O = opens().filter(o => o.l.brandId === b.id);
+  const opened = new Set(O.map(o => o.link)).size;
+  const last = O.sort((x, y) => y.at.localeCompare(x.at))[0];
+  return `<div class="small" style="margin-top:10px">Portfolio links sent: <b>${L.length}</b> · opened: <b>${opened}</b>${last ? ` · last opened by ${esc(firstName(last.l.contact))} ${ago(last.at)}` : ''}</div>`;
+}
 function openBrand(id){ S.open = id; S.editingContact = null; renderDrawer(); }
 function closeDrawer(){ S.open = null; renderDrawer(); }
 
@@ -746,6 +974,8 @@ function renderDrawer(){
           <div><label class="l">Next follow-up</label><input type="date" class="f" data-bf="nextFollowUp" value="${b.nextFollowUp||''}"></div>
           <div><label class="l">Last contact</label><div style="padding:8px 0">${b.lastContact ? fmtD(b.lastContact) + ` <span class="muted small">(${daysBetween(b.lastContact, today())} days ago)</span>` : '<span class="muted">Never</span>'}</div></div>
         </div>
+        ${engagementLine(b)}
+        ${b.outcome ? `<div class="small" style="margin-top:10px"><span class="chip ${b.outcome.result === 'Won' ? 'ok' : 'hot'}">${esc(b.outcome.result)}</span> ${esc(b.outcome.reason)}${b.outcome.note ? ' · ' + esc(b.outcome.note) : ''} <span class="muted">(${fmtD(b.outcome.date)}, ${esc(b.outcome.by)})</span></div>` : ''}
       </div>
 
       <div class="sec"><h4>Log a touchpoint</h4>
@@ -763,8 +993,8 @@ function renderDrawer(){
         ${contacts.map((c, i) => ec === i ? contactForm(c) : `<div class="contact">
           <div class="ci"><b>${esc(c.name || 'Unnamed')}</b> <span class="muted small">${esc(c.title)}</span>
             ${c.flag ? `<div><span class="chip warn">${esc(c.flag)}</span></div>` : ''}
-            <div class="small">${c.email ? `<a href="${mailto(b,c)}">${esc(c.email)}</a>` : '<span class="muted">No email</span>'}${c.phone ? ' · ' + esc(c.phone) : ''}${c.linkedin ? ` · <a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ''}</div></div>
-          <div style="display:flex;gap:4px">${c.email ? `<a class="btn sm" href="${mailto(b,c)}" title="Opens a ${esc(b.stage)} email in your mail app">Email</a>` : ''}<button class="btn sm ghost" data-edit-contact="${i}">Edit</button></div>
+            <div class="small">${c.email ? esc(c.email) : '<span class="muted">No email</span>'}${c.phone ? ' · ' + esc(c.phone) : ''}${c.linkedin ? ` · <a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ''}</div></div>
+          <div style="display:flex;gap:4px">${c.email ? `<button class="btn sm" data-compose="${b.id}" data-ci="${i}">Email</button>` : ''}<button class="btn sm ghost" data-edit-contact="${i}">Edit</button></div>
         </div>`).join('')}
         ${ec === 'new' ? contactForm({}) : ''}
         ${!contacts.length && ec !== 'new' ? '<div class="muted small">No contacts yet. Find the Head of Ecommerce, Creative Producer or Brand Marketing lead on LinkedIn.</div>' : ''}
@@ -841,7 +1071,7 @@ function modal(html, onOk, okLabel = 'Save'){
 //  Events
 // ===================================================================
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-edit-contact],[data-mailed]');
+  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-edit-contact],[data-compose],[data-cp]');
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
@@ -854,7 +1084,8 @@ document.addEventListener('click', async e => {
     if (d.sigAdd) return sigAdd(d.sigAdd);
     if (d.sigDismiss){ await store.updateSignal(d.sigDismiss, {status:'dismissed', handledBy: me(), handledAt: new Date().toISOString()}); return; }
     if (d.editContact !== undefined){ S.editingContact = Number(d.editContact); return renderDrawer(); }
-    if (d.mailed) return; // follow mailto link normally
+    if (d.compose){ return openCompose(d.compose, d.ci != null ? Number(d.ci) : null); }
+    if (d.cp) return composeAction(d.cp);
     switch (d.act){
       case 'signin':
         try { await store.signIn(); } catch (err){ if (err.code !== 'auth/popup-closed-by-user') renderLogin(err.message); }
@@ -921,6 +1152,14 @@ document.addEventListener('click', async e => {
 
 document.addEventListener('change', async e => {
   const t = e.target;
+  if (['cp-to','cp-deck','cp-reel'].includes(t.id) && S.compose){
+    const C = S.compose;
+    if (t.id === 'cp-to') C.ci = Number(t.value);
+    if (t.id === 'cp-deck') C.deck = t.value;
+    if (t.id === 'cp-reel') C.reel = t.checked;
+    const em = buildEmail(C); C.subject = em.subject; C.body = em.body;
+    renderCompose(); return;
+  }
   if (t.dataset.f){ S.f[t.dataset.f] = t.value; render(); return; }
   if (t.dataset.bf && S.open){
     const b = byId(S.open); const k = t.dataset.bf; let v = t.value;
@@ -946,7 +1185,7 @@ document.addEventListener('input', e => {
   }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape'){ if (document.querySelector('.modal')) document.querySelector('.modal').remove(); else if (S.open) closeDrawer(); }
+  if (e.key === 'Escape'){ if (document.querySelector('.modal')){ document.querySelector('.modal').remove(); S.compose = null; } else if (S.open) closeDrawer(); }
   if (e.key === 'Enter' && e.target.id === 't-text'){ document.querySelector('[data-act="log"]')?.click(); }
 });
 
@@ -990,6 +1229,7 @@ function exportCsv(){
       signals => { S.signals = signals; rerender(); },
       err => { if (err.code === 'permission-denied'){ store.signOut(); renderLogin("Your account doesn't have access yet. Ask Kevin to add you."); } }
     );
+    store.listenEngagement(l => { S.links = l; rerender(); }, c => { S.clicks = c; rerender(); });
   });
 })();
 </script>
