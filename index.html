@@ -542,7 +542,7 @@ function renderCompose(){
       <label class="l" style="margin-top:10px">Subject</label><input class="f" id="cp-subject" value="${esc(C.subject)}">
       <label class="l" style="margin-top:10px">Message</label><textarea class="f" id="cp-body" rows="11">${esc(C.body)}</textarea>
       <div class="small muted" style="margin-top:6px">Words in [square brackets] become clickable links, so no web address shows in the email. Opens are tracked and show on Today. Changing the contact or portfolio resets the text.</div>
-      <div class="acts" style="flex-wrap:wrap"><button class="btn" data-cp="cancel">Cancel</button><span style="flex:1"></span><button class="btn" data-cp="copy">Copy message</button><button class="btn" data-cp="mailapp">Open in mail app</button><button class="btn dark" data-cp="gmail">Open in Gmail</button></div>
+      <div class="acts" style="flex-wrap:wrap"><button class="btn" data-cp="cancel">Cancel</button><span style="flex:1"></span><button class="btn" data-cp="copy">Copy message</button><button class="btn" data-cp="owa">Outlook on the web</button><button class="btn dark" data-cp="mailapp">Open in Outlook</button></div>
     </div>`;
   } else {
     const after = stageAfterSend(b, C);
@@ -566,14 +566,14 @@ async function composeAction(act){
   const b = byId(C.brandId);
   if (act === 'cancel'){ S.compose = null; renderCompose(); return; }
   if (C.step === 1){
-    if (['copy','mailapp','gmail'].includes(act) && clientMatch(b)?.current && !$('#cp-ok')?.checked){ toast(`${b.name} is a current client. Tick the box once you've checked with the account lead.`); return; }
+    if (['copy','mailapp','owa'].includes(act) && clientMatch(b)?.current && !$('#cp-ok')?.checked){ toast(`${b.name} is a current client. Tick the box once you've checked with the account lead.`); return; }
     C.subject = $('#cp-subject').value; C.body = $('#cp-body').value;
   }
   const c = b.contacts[C.ci];
-  if (['copy','mailapp','gmail'].includes(act)){
+  if (['copy','mailapp','owa'].includes(act)){
     // Clipboard and new-tab must happen straight from the click, before anything is awaited
     const copied = copyRich(C);
-    if (act === 'gmail') window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(C.subject)}`, '_blank', 'noopener');
+    if (act === 'owa') window.open(`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(c.email)}&subject=${encodeURIComponent(C.subject)}`, '_blank', 'noopener');
     if (act === 'mailapp') location.href = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(C.subject)}`;
     const ok = await copied;
     if (!ok){ toast('The browser blocked copying. Use Copy message instead.'); }
@@ -605,7 +605,7 @@ function richBody(C){
     text = text.split(tok).join(`${label} (${url})`);
   });
   html = html.replace(/\n/g, '<br>');
-  return {html: `<div>${html}</div>`, text};
+  return {html: `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;color:#000">${html}</div>`, text};
 }
 async function copyRich(C){
   const {html, text} = richBody(C);
