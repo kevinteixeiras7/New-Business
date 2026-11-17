@@ -188,6 +188,8 @@ table.t tr.click:hover td{background:#fbfaf8}
 .rm-hot{font-size:11px;font-weight:700;color:var(--hot)}
 .more-row{padding:10px 16px;text-align:center;border-top:1px solid var(--line2)}
 .ai{color:#7c3aed;font-weight:700}
+.ai-t{color:#7c3aed;font-weight:600}
+.rc-act{flex-wrap:wrap}
 .ai-w{color:#c4b5fd;margin-right:2px}
 .nav .count.grey{background:#3a3a3a;color:#cfcdc7}
 .nav button.on .count.grey{background:var(--line2);color:var(--ink)}
@@ -1041,10 +1043,19 @@ function sigBrandName(s){
   const b = s.brandId && byId(s.brandId);
   return b ? b.name : (s.brandGuess || guessBrand(s.title) || '');
 }
+// Contact details the radar looked up for this story (shared across a brand's stories)
+function sigFound(s){
+  if (s.contact) return s.contact;
+  const n = sigBrandName(s).toLowerCase();
+  const o = n && S.signals.find(x => x.contact && sigBrandName(x).toLowerCase() === n);
+  return o ? o.contact : {};
+}
 function whoFor(s){
   const b = s.brandId && byId(s.brandId);
   const main = b && (b.contacts || []).find(c => c.email);
   const p = s.type === 'Appointment' ? personFromTitle(s.title) : {name:'', role:''};
+  const fp = sigFound(s).person;
+  if (fp && (!main || (p.name && fp.name.toLowerCase().includes(p.name.split(' ').pop().toLowerCase())))) return {text: `${fp.name}${fp.title ? ', ' + fp.title : ''}`, name: fp.name, role: fp.title || '', named: true, main, li: fp.url, ai: true};
   if (p.name) return {text: `${p.name}${p.role ? ', the new ' + p.role : ''}`, name: p.name, role: p.role ? 'New ' + p.role : '', named: true, main};
   if (s.type === 'Appointment' && p.role) return {text: `The new ${p.role}`, name: '', role: 'New ' + p.role, named: false, main};
   if (main) return {text: `${main.name || main.email}${main.title ? ', ' + main.title : ''} (already in your contacts)`, name: main.name, role: main.title, named: false, main};
@@ -1085,31 +1096,46 @@ function radarCard(g, big){
     ${cl ? `<div class="rc-warn"><b>${esc(cl.name)} is a current client.</b> Check with the account lead before reaching out.</div>` : ''}
     <dl class="rc-dl">
       <dt>Why it matters</dt><dd>${esc(info.why)}</dd>
-      <dt>Who to contact</dt><dd>${esc(who.text)}${!who.main ? ` <a class="rc-li" href="${linkedInUrl(name, who.name || who.role)}" target="_blank" rel="noopener">Find on LinkedIn</a>` : ''}</dd>
+      <dt>Who to contact</dt><dd>${who.ai ? '<span class="ai">✦</span> ' : ''}${esc(who.text)} <a class="rc-li" href="${who.li || linkedInUrl(name, who.name || who.role)}" target="_blank" rel="noopener">${who.li ? 'LinkedIn profile ↗' : 'Search LinkedIn ↗'}</a></dd>
+      ${contactLine(s, who)}
       ${big ? `<dt>What to say</dt><dd>${esc(info.ask)}</dd>` : ''}
     </dl>
     ${more.length ? `<details class="rc-more"><summary>${more.length} more ${more.length === 1 ? 'story' : 'stories'} about ${esc(name || 'this brand')}</summary>${more.map(x => `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(cleanTitle(x.title))}</a>`).join('')}</details>` : ''}
     <div class="rc-act">
       ${cl ? `<button class="btn sm" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}">Leave it</button>`
-           : `<button class="btn sm dark" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}">${b ? 'Add to today\'s chase' : 'Add to contact list'}</button>`}
-      ${who.main && !cl ? `<button class="btn sm" data-sig-email="${s.id}">Email ${esc(firstName(who.main.name) || 'them')}</button>` : ''}
+           : primaryActs(s, g, who, b)}
       <span style="flex:1"></span>
-      <button class="btn sm ghost" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}">Not relevant</button>
+      <button class="btn sm ghost" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}" title="Not relevant" aria-label="Not relevant">✕</button>
     </div>
   </article>`;
 }
 
+function contactLine(s, who){
+  if (who.main) return '';
+  const f = sigFound(s);
+  if (f.email) return `<dt>Email</dt><dd><span class="ai">✦</span> ${esc(f.email)} <span class="small muted">${esc(f.kind || 'Inbox')} on <a href="${esc(f.source || f.website)}" target="_blank" rel="noopener">${esc((f.website || '').replace(/^https?:\/\/(www\.)?/, '') || 'their site')}</a></span></dd>`;
+  if (f.at) return `<dt>Email</dt><dd class="muted">None published${f.website ? ` on <a href="${esc(f.website)}" target="_blank" rel="noopener">${esc(f.website.replace(/^https?:\/\/(www\.)?/, ''))}</a>` : ''}, so send it on LinkedIn instead.</dd>`;
+  return `<dt>Email</dt><dd class="muted">Contacts are looked up with each scan.</dd>`;
+}
+function primaryActs(s, g, who, b){
+  const grp = g.map(x => x.id).join(',');
+  const email = who.main || sigFound(s).email;
+  return `${email ? `<button class="btn sm dark" data-sig-email="${s.id}" data-group="${grp}">Email ${esc(who.main ? (firstName(who.main.name) || 'them') : 'inbox')}</button>` : ''}
+    <button class="btn sm ${email ? '' : 'dark'}" data-sig-li="${s.id}" data-group="${grp}" title="Copies a short message with your tracked portfolio link and opens LinkedIn">Send on LinkedIn</button>
+    <button class="btn sm ghost" data-sig-add="${s.id}" data-group="${grp}" title="${b ? 'Put it on today\'s chase list' : 'Save to your contact list'}">${b ? 'Chase' : 'Save'}</button>`;
+}
 function radarRow(g){
   const s = g[0], name = sigBrandName(s), b = s.brandId && byId(s.brandId), cl = clientInTitle(s.title);
   return `<div class="rr">
     ${strengthHtml(s.score).replace('class="str"', 'class="str mini"')}
     <div class="rr-main">
-      <div><b>${name ? esc(name) : '<span class="muted">Brand to confirm</span>'}</b> <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>${cl ? ' <span class="chip hot">Client</span>' : ''}${b ? ` <span class="chip dark">${esc(b.stage)}</span>` : ''}${g.length > 1 ? ` <span class="small muted">+${g.length - 1} more</span>` : ''}</div>
+      <div><b>${name ? esc(name) : '<span class="muted">Brand to confirm</span>'}</b> <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>${cl ? ' <span class="chip hot">Client</span>' : ''}${b ? ` <span class="chip dark">${esc(b.stage)}</span>` : ''}${g.length > 1 ? ` <span class="small muted">+${g.length - 1} more</span>` : ''}${(() => { const f = sigFound(s); return f.email || f.person ? ` <span class="small ai-t" title="${esc([f.person ? f.person.name + (f.person.title ? ', ' + f.person.title : '') : '', f.email].filter(Boolean).join(' · '))}">✦ ${[f.person ? 'person' : '', f.email ? 'email' : ''].filter(Boolean).join(' + ')} found</span>` : ''; })()}</div>
       <a class="rr-head" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(cleanTitle(s.title))}</a>
     </div>
     <span class="small muted rr-when">${dayAgo(s.published)}</span>
     <div class="rr-act">
-      ${cl ? '' : `<button class="btn sm" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}" title="Add to contact list">Add</button>`}
+      ${cl ? '' : (() => { const grp = g.map(x => x.id).join(','), em = sigFound(s).email || (b && (b.contacts || []).some(c => c.email));
+        return `${em ? `<button class="btn sm" data-sig-email="${s.id}" data-group="${grp}" title="Email them">Email</button>` : `<button class="btn sm" data-sig-li="${s.id}" data-group="${grp}" title="Send your portfolio on LinkedIn">LinkedIn</button>`}<button class="btn sm ghost" data-sig-add="${s.id}" data-group="${grp}" title="Save to your contact list">Save</button>`; })()}
       <button class="btn sm ghost" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}" title="Not relevant">✕</button>
     </div>
   </div>`;
@@ -1174,7 +1200,7 @@ function vRadar(){
           : `<span class="small">Still need</span><b>${esc(named ? named.name : (who.name || who.role || 'A contact'))}</b><span class="small muted">${named ? 'No email yet' : 'Not in your contacts yet'}</span>`}</div>
         <div class="cl-act">${mainC
           ? `<button class="btn sm dark" data-compose="${b.id}" data-ci="${ci}">Email ${esc(firstName(mainC.name) || 'them')}</button>`
-          : `<a class="btn sm" href="${linkedInUrl(b.name, named ? named.name : (who.name || who.role))}" target="_blank" rel="noopener">Find on LinkedIn</a><button class="btn sm dark" data-open="${b.id}">Add email</button>`}</div>
+          : `<button class="btn sm dark" data-sig-li="${s.id}">Send on LinkedIn</button><button class="btn sm" data-open="${b.id}">Add email</button>`}</div>
       </div>`; }).join('') : '<div class="empty">Nothing here yet. Press "Add to contact list" on a story to start.</div>'}</div>`;
   }
 
@@ -1261,12 +1287,75 @@ async function sigAdd(id, groupIds){
       toast(`${name} added to your contact list`);
     }, 'Add to list');
 }
-async function sigEmail(id){
-  const s = S.signals.find(x => x.id === id); const b = s && byId(s.brandId); if (!b) return;
-  await store.update(b.id, {lastSignal: {type: s.type, title: s.title, link: s.link, date: today()}}, entry('Signal', `${s.type}: ${s.title}`));
-  await markSigs([id], {status:'added', brandId: b.id});
-  const ci = (b.contacts || []).findIndex(c => c.email);
-  openCompose(b.id, ci < 0 ? null : ci);
+// Make sure the story's brand is in the app, with any contacts the radar found
+async function ensureBrand(s, groupIds){
+  const ids = groupIds && groupIds.length ? groupIds : [s.id];
+  const f = sigFound(s);
+  const lastSignal = {type: s.type, title: s.title, link: s.link, date: today()};
+  const found = [];
+  if (f.person) found.push({name: f.person.name, title: f.person.title || '', email:'', phone:'', linkedin: f.person.url, flag:'', ai:true, aiSource: f.person.url});
+  if (f.email) found.push({name:'', title: f.kind || 'Inbox', email: f.email, phone:'', linkedin:'', flag:'', ai:true, aiSource: f.source || f.website});
+  let b = s.brandId && byId(s.brandId);
+  const name = b ? b.name : sigBrandName(s);
+  if (!name) return null;
+  b = b || S.brands.find(x => x.name.toLowerCase() === name.toLowerCase());
+  let bid;
+  if (b){
+    bid = b.id;
+    const contacts = [...(b.contacts || [])];
+    found.forEach(c => { if (!contacts.some(x => (c.email && x.email === c.email) || (c.name && (x.name || '').toLowerCase() === c.name.toLowerCase()))) contacts.push(c); });
+    await store.update(bid, {lastSignal, contacts, ...(f.website && !b.website ? {website: f.website} : {}), ...(b.nextFollowUp ? {} : {nextFollowUp: today()})}, entry('Signal', `${s.type}: ${s.title}`));
+  } else {
+    bid = await store.create({...newBrand({name, sector: s.sector || 'Other', priority: s.score >= 8 ? 'High' : 'Medium', nextFollowUp: today(),
+      notes: `Found via radar: ${s.title}\n${s.link}`, log: [entry('Signal', `${s.type}: ${s.title}`)]}), contacts: found, lastSignal, website: f.website || ''});
+  }
+  await markSigs(ids, {status:'added', brandId: bid});
+  return bid;
+}
+async function sigEmail(id, groupIds){
+  const s = S.signals.find(x => x.id === id); if (!s) return;
+  const bid = await ensureBrand(s, groupIds);
+  if (!bid) return sigAdd(id, groupIds);
+  const b = byId(bid); const ci = (b.contacts || []).findIndex(c => c.email);
+  openCompose(bid, ci < 0 ? null : ci);
+}
+const LI_HOOK = {Appointment: () => 'congratulations on the new role!', Rebrand: n => `loved the new look at ${n}.`, Funding: () => 'congrats on the investment news.',
+  Expansion: n => `great to see ${n} growing.`, Launch: () => 'congrats on the new launch.', Agency: n => `I saw ${n} may be looking at creative partners.`, News: n => `I saw ${n} in the news.`};
+function liMessage(s, brandName, personName, deck, link){
+  const me1 = firstName(S.user.displayName) || 'Kevin';
+  const hi = `Hi ${firstName(personName) || 'there'}, ${(LI_HOOK[s.type] || LI_HOOK.News)(brandName)}`;
+  let m = `${hi} I'm ${me1} at Seventy7, a London creative production studio (ecommerce, campaign and video). Here's our ${deck.name}: ${link} Would love to help with your next shoot.`;
+  if (m.length > 300) m = `${hi} I'm ${me1} at Seventy7, a London production studio. Our ${deck.name}: ${link} Would love to help on your next shoot.`;
+  return m;
+}
+async function sigLinkedIn(id, groupIds){
+  const s = S.signals.find(x => x.id === id); if (!s) return;
+  const name = (s.brandId && byId(s.brandId)?.name) || sigBrandName(s);
+  if (!name){ toast('Add the brand first so the link can be tracked'); return sigAdd(id, groupIds); }
+  // Everything that needs the click (copy, new tab) happens first
+  const who = whoFor(s), f = sigFound(s);
+  const sector = (s.brandId && byId(s.brandId)?.sector) || s.sector || 'Other';
+  const deck = deckByKey(suggestedDeck({sector})), lid = linkId(), url = GO_BASE + lid;
+  const person = who.li ? who.name : who.main ? who.main.name : (f.person ? f.person.name : who.named ? who.name : '');
+  const msg = liMessage(s, name, person, deck, url);
+  const cp = navigator.clipboard.writeText(msg).then(() => true, () => false);
+  const profile = who.li || (who.main && who.main.linkedin) || (f.person && f.person.url) || linkedInUrl(name, person || who.role);
+  window.open(profile, '_blank', 'noopener');
+  const copied = await cp;
+  const bid = await ensureBrand(s, groupIds); if (!bid) return;
+  const b = byId(bid);
+  try { await store.createLinks([{id: lid, brandId: bid, brand: b.name, contact: person || 'LinkedIn', sector: b.sector, stage: b.stage, sent: false, createdBy: me(), createdAt: new Date().toISOString(), deck: deck.key, deckName: deck.name, url: DRIVE_URL(deck.id)}]); } catch (e){ console.warn(e); }
+  modal(`<h3>Send it on LinkedIn</h3>
+    <p class="small" style="margin-top:-4px">${copied ? 'The message is copied and LinkedIn is open in a new tab.' : 'Copy the message below, then open LinkedIn.'} ${who.li || f.person || who.main?.linkedin ? `On ${esc(firstName(person) || 'their')}'s profile, press <b>Message</b> (or <b>Connect → Add a note</b>) and paste with ⌘V.` : `Pick the right person from the search, press <b>Message</b> (or <b>Connect → Add a note</b>) and paste with ⌘V.`}</p>
+    <textarea class="f" rows="6" id="m-li" readonly>${esc(msg)}</textarea>
+    <div class="small muted" style="margin:6px 0 0">${msg.length}/300 characters, short enough for a connection note. The portfolio link is tracked, so opens show on Today.</div>
+    <p class="small" style="margin:14px 0 0"><b>Did you send it?</b></p>`, async () => {
+      await store.markSent([lid]).catch(() => {});
+      const cur = byId(bid); const stage = ['Prospect','Contacted'].includes(cur.stage) ? 'Portfolio Sent' : cur.stage;
+      await store.update(bid, {stage, lastContact: today(), nextFollowUp: nextForStage(stage) || addDays(today(), 7)}, {...entry('LinkedIn', `Sent ${deck.name} on LinkedIn${person ? ' to ' + person : ''}`), links: [lid]});
+      toast('Logged. Opens will show on Today');
+    }, 'Yes, log it');
+  setTimeout(() => { const t = $('#m-li'); t?.addEventListener('focus', () => t.select()); }, 50);
 }
 
 
@@ -1758,7 +1847,7 @@ function modal(html, onOk, okLabel = 'Save'){
 //  Events
 // ===================================================================
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-sig-email],[data-sig-undo],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit]');
+  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-sig-email],[data-sig-undo],[data-sig-li],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit]');
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
@@ -1770,7 +1859,8 @@ document.addEventListener('click', async e => {
     if (d.sort){ S.f.dir = S.f.sort === d.sort ? -S.f.dir : 1; S.f.sort = d.sort; return render(); }
     if (d.sigAdd) return sigAdd(d.sigAdd, d.group ? d.group.split(',') : null);
     if (d.sigDismiss){ await markSigs(d.group ? d.group.split(',') : [d.sigDismiss], {status:'dismissed'}); return; }
-    if (d.sigEmail) return sigEmail(d.sigEmail);
+    if (d.sigEmail) return sigEmail(d.sigEmail, d.group ? d.group.split(',') : null);
+    if (d.sigLi) return sigLinkedIn(d.sigLi, d.group ? d.group.split(',') : null);
     if (d.sigUndo){ await store.updateSignal(d.sigUndo, {status:'new', handledBy: me(), handledAt: new Date().toISOString()}); return; }
     if (d.editContact !== undefined){ S.editingContact = Number(d.editContact); return renderDrawer(); }
     if (d.openClient){ e.preventDefault(); $('#gres')?.classList.add('hidden'); S.open = null; S.openClient = d.openClient; S.editingCC = null; return renderDrawer(); }

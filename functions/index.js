@@ -206,7 +206,7 @@ async function runScan(trigger) {
 
 exports.dailyRadar = onSchedule(
   { schedule: '0 7 * * *', timeZone: 'Europe/London', timeoutSeconds: 540, memory: '512MiB' },
-  async () => { await runScan('schedule'); }
+  async () => { await runScan('schedule'); await enrichSignals(80, 420000); }
 );
 
 exports.runScanNow = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (req) => {
@@ -214,7 +214,9 @@ exports.runScanNow = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (re
   if (!req.auth || !req.auth.token.email_verified || !TEAM.includes(email)) {
     throw new HttpsError('permission-denied', 'Not on the new business team');
   }
-  return runScan(email);
+  const out = await runScan(email);
+  out.contacts = await enrichSignals(40, 200000);
+  return out;
 });
 
 
@@ -234,17 +236,41 @@ async function get(url, ms = 8000){
 }
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 const brandWords = n => n.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the','and','of','ltd','london','uk','fc'].includes(w));
-async function searchSites(q){
+const decodeEnt = t => t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+async function searchRaw(q){
   const out = [];
   const ddg = await get('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q));
-  if (ddg) for (const m of ddg.html.matchAll(/class="result__a"[^>]*href="([^"]+)"/g)){
+  if (ddg) for (const m of ddg.html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)){
     let u = m[1].replace(/&amp;/g, '&'); const k = u.match(/uddg=([^&]+)/); if (k) u = decodeURIComponent(k[1]);
-    if (u.startsWith('//')) u = 'https:' + u; out.push(u);
+    if (u.startsWith('//')) u = 'https:' + u; out.push({url: u, title: decodeEnt(m[2])});
   }
   if (!out.length){
     const bing = await get('https://www.bing.com/search?setlang=en-GB&cc=GB&q=' + encodeURIComponent(q));
-    if (bing) for (const m of bing.html.matchAll(/<li class="b_algo"[\s\S]*?<a[^>]+href="(https?:[^"]+)"/g)) out.push(m[1].replace(/&amp;/g, '&'));
+    if (bing) for (const m of bing.html.matchAll(/<li class="b_algo"[\s\S]*?<h2[^>]*><a[^>]+href="(https?:[^"]+)"[^>]*>([\s\S]*?)<\/a>/g)) out.push({url: m[1].replace(/&amp;/g, '&'), title: decodeEnt(m[2])});
   }
+  return out;
+}
+// A public LinkedIn profile for the right person, found through a web search (LinkedIn itself is never fetched)
+async function findPerson(brand, person, role){
+  const q = person ? `site:linkedin.com/in "${person}" ${brand}` : `site:linkedin.com/in "${brand}" ${role}`;
+  const words = brandWords(brand);
+  for (const r of await searchRaw(q)){
+    if (!/linkedin\.com\/in\//.test(r.url)) continue;
+    const t = r.title.replace(/\s*\|\s*LinkedIn.*$/i, '');
+    const parts = t.split(/\s+[-–—]\s+/).map(x => x.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const name = parts[0].replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    if (!/^[A-Za-zÀ-ÿ'’.-]+(\s+[A-Za-zÀ-ÿ'’.-]+){1,3}$/.test(name)) continue;
+    const rest = parts.slice(1).join(' · ').toLowerCase();
+    if (!words.some(w => rest.includes(w))) continue;
+    if (person && !name.toLowerCase().includes(person.split(' ').pop().toLowerCase())) continue;
+    const title = parts.length > 2 ? parts[1] : (parts[1].toLowerCase().includes(words[0] || '#') ? '' : parts[1]);
+    return {name, title, url: r.url.split('?')[0]};
+  }
+  return null;
+}
+async function searchSites(q){
+  const out = (await searchRaw(q)).map(r => r.url);
   return out.filter(u => /^https?:/.test(u) && !SKIP_HOSTS.test(hostOf(u)));
 }
 async function findWebsite(name, hint){
@@ -289,6 +315,50 @@ async function findContact(name, hint){
   }
   return best ? {website: site, email: best.email, kind: best.kind, source: best.source} : {website: site, email: '', note: 'No published email on the site'};
 }
+const ROLE_FOR = {Appointment:'Head of Marketing', Agency:'Head of Marketing', Rebrand:'Brand Director', Funding:'Head of Marketing', Expansion:'Head of Ecommerce', Launch:'Head of Ecommerce', News:'Head of Marketing'};
+function personInTitle(t){
+  t = (t || '').replace(/\s+[-–|]\s+[^-–|]{2,40}$/, '');
+  const pats = [/\b(?:appoints|appointed|names|named|hires|hired|taps|promotes|welcomes|recruits)\s+(?:former\s+[\w-]+\s+(?:boss|exec|executive|chief)\s+)?([A-Z][a-zà-ÿ'’-]+(?:\s+[A-Z][a-zà-ÿ'’-]+){1,2})\b/,
+    /^([A-Z][a-zà-ÿ'’-]+(?:\s+[A-Z][a-zà-ÿ'’-]+){1,2})\s+(?:joins|named|appointed|to lead|steps up|promoted|takes over|moves to)\b/];
+  for (const re of pats){ const m = t.match(re); if (m && !/^(New|Former|The|Chief|Head|Global|Senior|Group|Brand|Creative|Marketing|UK|Its|Ex)\b/.test(m[1])) return m[1]; }
+  return '';
+}
+// Look up contact details for radar stories: the brand's published inbox, plus the most likely person on LinkedIn
+async function enrichSignals(limit, budgetMs){
+  const t0 = Date.now(), now = new Date().toISOString();
+  const [sigs, brandSnap] = await Promise.all([db.collection('signals').where('status', '==', 'new').get(), db.collection('brands').get()]);
+  const brands = new Map(brandSnap.docs.map(d => [d.id, d.data()]));
+  const groups = new Map();
+  for (const d of sigs.docs){
+    const s = d.data(); if (s.contactTried) continue;
+    const b = s.brandId && brands.get(s.brandId);
+    const name = b ? b.name : (s.brandGuess || '');
+    if (!name) continue;
+    const k = name.toLowerCase();
+    if (!groups.has(k)) groups.set(k, {name, website: b?.website || '', hasEmail: !!(b && (b.contacts || []).some(c => c.email)), refs: [], score: 0, sig: s});
+    const g = groups.get(k); g.refs.push(d.ref);
+    if (s.score > g.score || (s.type === 'Appointment' && g.sig.type !== 'Appointment')){ g.score = Math.max(g.score, s.score); if (s.type === 'Appointment' || s.score >= g.sig.score) g.sig = s; }
+  }
+  const todo = [...groups.values()].sort((a, b) => b.score - a.score).slice(0, limit);
+  let done = 0, emails = 0, people = 0, i = 0;
+  const work = async () => {
+    while (i < todo.length && Date.now() - t0 < budgetMs){
+      const g = todo[i++];
+      try {
+        const named = g.sig.type === 'Appointment' ? personInTitle(g.sig.title) : '';
+        const [c, p] = await Promise.all([g.hasEmail ? Promise.resolve({}) : findContact(g.name, g.website), findPerson(g.name, named, ROLE_FOR[g.sig.type] || 'Head of Marketing')]);
+        const contact = {email: c.email || '', kind: c.kind || '', source: c.source || '', website: c.website || '', person: p || null, named: named || '', at: now};
+        const batch = db.batch(); g.refs.forEach(r => batch.update(r, {contact, contactTried: now})); await batch.commit();
+        done++; if (contact.email) emails++; if (p) people++;
+      } catch (e){ logger.warn('enrich', g.name, e.message); }
+    }
+  };
+  await Promise.all([work(), work(), work(), work()]);
+  const out = {brands: done, emails, people, left: groups.size - done};
+  logger.info('Radar contacts', out);
+  return out;
+}
+
 exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstances: 4 }, async (req) => {
   const email = (req.auth?.token?.email || '').toLowerCase();
   if (!req.auth || !req.auth.token.email_verified || !TEAM.includes(email)) throw new HttpsError('permission-denied', 'Not on the new business team');
@@ -299,6 +369,7 @@ exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstanc
   return r;
 });
 exports._findContact = findContact;
+exports._findPerson = findPerson;
 
 // exported for local testing
 exports._classify = classify;
