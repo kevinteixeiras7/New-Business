@@ -120,15 +120,65 @@ table.t tr.click{cursor:pointer}
 table.t tr.click:hover td{background:#fbfaf8}
 
 /* radar */
-.sig{display:flex;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line2)}
-.sig:last-child{border-bottom:none}
-.score{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-weight:700;flex-shrink:0;background:var(--line2)}
-.score.s-hi{background:var(--ink);color:#fff}
-.score.s-mid{background:#d9d6ce}
-.sig .body{flex:1;min-width:0}
-.sig .body a{font-weight:600;text-decoration:none}
-.sig .body a:hover{text-decoration:underline}
-.sig .line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.rhead{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.rhead>div{flex:1}
+.rhead-t{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:2px}
+.hot-t{color:var(--hot)}
+.seg{display:inline-flex;background:var(--line2);border-radius:10px;padding:3px;gap:2px;margin-bottom:16px}
+.seg button{all:unset;cursor:pointer;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button b{font-weight:600;margin-left:4px;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg button.on b{color:var(--ink)}
+.tchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.tchips button{all:unset;cursor:pointer;padding:5px 11px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:600}
+.tchips button b{font-weight:500;color:var(--muted);margin-left:3px}
+.tchips button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tchips button.on b{color:#bdbab3}
+.tchips select{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.rsec{display:flex;align-items:baseline;gap:10px;margin:6px 0 10px}
+.rsec h3{margin:0;font-size:15px}
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:26px}
+.rc{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.rc-top{display:flex;align-items:center;gap:8px}
+.rc-brand{font-size:17px;font-weight:700;letter-spacing:-.01em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-head{font-size:13px;line-height:1.45;text-decoration:none;color:var(--ink2)}
+.rc-head:hover{text-decoration:underline}
+.rc-meta{font-size:12px;color:var(--muted)}
+.rc-meta a{color:inherit}
+.rc-warn{background:var(--hot-bg);color:#7c2d12;border-radius:8px;padding:8px 10px;font-size:12px}
+.rc-dl{margin:4px 0 0;display:grid;grid-template-columns:1fr;gap:2px;font-size:13px;border-top:1px solid var(--line2);padding-top:10px}
+.rc-dl dt{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.rc-dl dt:first-child{margin-top:0}
+.rc-dl dd{margin:0;line-height:1.45}
+.rc-li{font-size:12px;font-weight:600;color:var(--blue);white-space:nowrap}
+.rc-more{font-size:12px;color:var(--muted)}
+.rc-more summary{cursor:pointer;font-weight:600}
+.rc-more a{display:block;margin-top:6px;color:var(--ink2);text-decoration:none}
+.rc-more a:hover{text-decoration:underline}
+.rc-act{display:flex;gap:6px;align-items:center;margin-top:auto;padding-top:6px}
+.str{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
+.str i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.str i.on{background:var(--hot)}
+.str i:last-of-type{margin-right:4px}
+.str.mini{font-size:0;gap:3px;width:30px;flex-shrink:0}
+.str.mini i:last-of-type{margin-right:0}
+.rr{display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid var(--line2)}
+.rr:last-child{border-bottom:none}
+.rr-main{flex:1;min-width:0}
+.rr-head{display:block;font-size:12.5px;color:var(--muted);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.rr-head:hover{text-decoration:underline;color:var(--ink2)}
+.rr-when{white-space:nowrap}
+.rr-act{display:flex;gap:4px}
+.cl{display:grid;grid-template-columns:1fr 220px auto;gap:16px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.cl:last-child{border-bottom:none}
+.cl-main{min-width:0}
+.cl-main a{text-decoration:none}
+.cl-why{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.cl-who{display:flex;flex-direction:column;line-height:1.35}
+.cl-who>span:first-child{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.cl-act{display:flex;gap:6px;justify-content:flex-end}
+@media (max-width:1100px){.rgrid{grid-template-columns:1fr 1fr}}
+@media (max-width:900px){.rgrid{grid-template-columns:1fr}.cl{grid-template-columns:1fr}.cl-act{justify-content:flex-start}.rr-when{display:none}.rhead{flex-wrap:wrap}}
 
 /* dashboard */
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -922,23 +972,195 @@ function sigRow(s, compact){
       <button class="btn sm ghost" data-sig-dismiss="${s.id}">Dismiss</button></div>` : ''}
   </div>`;
 }
+const SIG_INFO = {
+  Appointment: {why: 'New leaders often review their suppliers in their first 90 days.', who: 'Head of Marketing or Brand Director', ask: 'Congratulate them and introduce Seventy7.'},
+  Agency:      {why: 'They are looking at creative partners right now.', who: 'Head of Marketing or Brand Director', ask: 'Ask to be considered alongside their agency.'},
+  Rebrand:     {why: 'A new look means product and campaign imagery needs reshooting.', who: 'Brand Director or Creative Director', ask: 'Offer to help roll the new look out across their imagery.'},
+  Funding:     {why: 'Fresh money usually goes into growth, ecommerce and content.', who: 'Head of Marketing or a founder', ask: 'Show how we scale content as they grow.'},
+  Expansion:   {why: 'New stores and markets need new campaign and product imagery.', who: 'Head of Ecommerce or Retail Marketing', ask: 'Pitch launch content for the new stores or markets.'},
+  Launch:      {why: 'A new product or collection means a shoot is coming.', who: 'Head of Ecommerce or Content Production', ask: 'Offer to shoot the next drop.'},
+  News:        {why: 'A natural reason to get back in touch.', who: 'Your main contact there', ask: 'Use the story as your opening line.'},
+};
+const sigInfo = s => SIG_INFO[s.type] || SIG_INFO.News;
+const strength = n => n >= 8 ? ['Strong', 3] : n >= 6 ? ['Good', 2] : ['Worth a look', 1];
+const strengthHtml = n => { const [l, k] = strength(n); return `<span class="str" title="Score ${n}/10"><i class="${k>0?'on':''}"></i><i class="${k>1?'on':''}"></i><i class="${k>2?'on':''}"></i>${l}</span>`; };
+const cleanTitle = t => (t || '').replace(/\s+[-–|]\s+[^-–|]{2,40}$/, '');
+const ROLE_RE = /\b(chief (?:marketing|executive|creative|brand|digital|commercial|operating) officer|cmo|ceo|cco|managing director|creative director|brand director|marketing director|ecommerce director|e-commerce director|digital director|(?:global |uk |vp,? |senior )?head of [a-z&\- ]+?)(?=\b(?: at| for| to| as|,|\.|$| ahead| from| and| in))/i;
+function personFromTitle(t){
+  t = cleanTitle(t);
+  const pats = [
+    /\b(?:appoints|appointed|names|named|hires|hired|taps|promotes|welcomes|recruits)\s+(?:former\s+[\w-]+\s+(?:boss|exec|executive|chief)\s+)?([A-Z][a-zà-ÿ'’-]+(?:\s+[A-Z][a-zà-ÿ'’-]+){1,2})\b/,
+    /^([A-Z][a-zà-ÿ'’-]+(?:\s+[A-Z][a-zà-ÿ'’-]+){1,2})\s+(?:joins|named|appointed|to lead|steps up|promoted|takes over|moves to)\b/,
+  ];
+  const stop = /^(New|Former|The|Chief|Head|Global|Senior|Group|Brand|Creative|Marketing|UK|Its|Ex)\b/;
+  let name = '';
+  for (const re of pats){ const m = t.match(re); if (m && !stop.test(m[1])) { name = m[1]; break; } }
+  if (name && S.brands.some(b => b.name.toLowerCase() === name.toLowerCase())) name = '';
+  const r = t.match(ROLE_RE);
+  let role = r ? r[1].trim().replace(/\s+/g, ' ') : '';
+  if (role) role = /^(cmo|ceo|cco)$/i.test(role) ? role.toUpperCase() : role.replace(/^./, c => c.toUpperCase());
+  return {name, role};
+}
+function sigBrandName(s){
+  const b = s.brandId && byId(s.brandId);
+  return b ? b.name : (s.brandGuess || guessBrand(s.title) || '');
+}
+function whoFor(s){
+  const b = s.brandId && byId(s.brandId);
+  const main = b && (b.contacts || []).find(c => c.email);
+  const p = s.type === 'Appointment' ? personFromTitle(s.title) : {name:'', role:''};
+  if (p.name) return {text: `${p.name}${p.role ? ', the new ' + p.role : ''}`, name: p.name, role: p.role ? 'New ' + p.role : '', named: true, main};
+  if (s.type === 'Appointment' && p.role) return {text: `The new ${p.role}`, name: '', role: 'New ' + p.role, named: false, main};
+  if (main) return {text: `${main.name || main.email}${main.title ? ', ' + main.title : ''} (already in your contacts)`, name: main.name, role: main.title, named: false, main};
+  return {text: sigInfo(s).who, name: '', role: sigInfo(s).who.split(' or ')[0], named: false, main};
+}
+const linkedInUrl = (brand, role) => 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent([brand, role].filter(Boolean).join(' '));
+function dayAgo(iso){
+  if (!iso) return '';
+  const d = daysBetween(iso.slice(0, 10), today());
+  return d <= 0 ? 'Today' : d === 1 ? 'Yesterday' : d < 7 ? `${d} days ago` : fmtD(iso.slice(0, 10));
+}
+// One entry per brand: the strongest story leads, the rest tuck underneath
+function groupSigs(list){
+  const m = new Map();
+  for (const s of list){
+    const n = sigBrandName(s);
+    const k = s.brandId || (n ? 'n:' + n.toLowerCase() : 's:' + s.id);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(s);
+  }
+  return [...m.values()].map(g => g.sort((a, b) => b.score - a.score || (b.published||'').localeCompare(a.published||'')))
+    .sort((a, b) => b[0].score - a[0].score || (b[0].published||'').localeCompare(a[0].published||''));
+}
+
+function radarCard(g, big){
+  const s = g[0], info = sigInfo(s), name = sigBrandName(s);
+  const b = s.brandId && byId(s.brandId), bm = b && clientMatch(b), cl = clientInTitle(s.title) || (bm && bm.current ? bm.client : null);
+  const who = whoFor(s);
+  const more = g.slice(1);
+  return `<article class="rc ${big ? 'big' : ''}">
+    <div class="rc-top">
+      <div class="rc-brand">${name ? esc(name) : '<span class="muted">Brand to confirm</span>'}</div>
+      <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>
+      <span style="flex:1"></span>${strengthHtml(s.score)}
+    </div>
+    <a class="rc-head" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(cleanTitle(s.title))}</a>
+    <div class="rc-meta">${esc(s.source || '')}${s.published ? ' · ' + dayAgo(s.published) : ''}${s.sector ? ' · ' + esc(s.sector) : ''}${b ? ` · <a href="#" data-open="${b.id}">In pipeline: ${esc(b.stage)}</a>` : ''}</div>
+    ${cl ? `<div class="rc-warn"><b>${esc(cl.name)} is a current client.</b> Check with the account lead before reaching out.</div>` : ''}
+    <dl class="rc-dl">
+      <dt>Why it matters</dt><dd>${esc(info.why)}</dd>
+      <dt>Who to contact</dt><dd>${esc(who.text)}${!who.main ? ` <a class="rc-li" href="${linkedInUrl(name, who.name || who.role)}" target="_blank" rel="noopener">Find on LinkedIn</a>` : ''}</dd>
+      ${big ? `<dt>What to say</dt><dd>${esc(info.ask)}</dd>` : ''}
+    </dl>
+    ${more.length ? `<details class="rc-more"><summary>${more.length} more ${more.length === 1 ? 'story' : 'stories'} about ${esc(name || 'this brand')}</summary>${more.map(x => `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(cleanTitle(x.title))}</a>`).join('')}</details>` : ''}
+    <div class="rc-act">
+      ${cl ? `<button class="btn sm" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}">Leave it</button>`
+           : `<button class="btn sm dark" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}">${b ? 'Add to today\'s chase' : 'Add to contact list'}</button>`}
+      ${who.main && !cl ? `<button class="btn sm" data-sig-email="${s.id}">Email ${esc(firstName(who.main.name) || 'them')}</button>` : ''}
+      <span style="flex:1"></span>
+      <button class="btn sm ghost" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}">Not relevant</button>
+    </div>
+  </article>`;
+}
+
+function radarRow(g){
+  const s = g[0], name = sigBrandName(s), b = s.brandId && byId(s.brandId), cl = clientInTitle(s.title);
+  return `<div class="rr">
+    ${strengthHtml(s.score).replace('class="str"', 'class="str mini"')}
+    <div class="rr-main">
+      <div><b>${name ? esc(name) : '<span class="muted">Brand to confirm</span>'}</b> <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>${cl ? ' <span class="chip hot">Client</span>' : ''}${b ? ` <span class="chip dark">${esc(b.stage)}</span>` : ''}${g.length > 1 ? ` <span class="small muted">+${g.length - 1} more</span>` : ''}</div>
+      <a class="rr-head" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(cleanTitle(s.title))}</a>
+    </div>
+    <span class="small muted rr-when">${dayAgo(s.published)}</span>
+    <div class="rr-act">
+      ${cl ? '' : `<button class="btn sm" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}" title="Add to contact list">Add</button>`}
+      <button class="btn sm ghost" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}" title="Not relevant">✕</button>
+    </div>
+  </div>`;
+}
+
+function contactListRows(){
+  // Brands added from the radar, newest first, one row each
+  const seen = new Set(), rows = [];
+  S.signals.filter(s => s.status === 'added' && s.brandId && byId(s.brandId))
+    .sort((a, b) => (b.handledAt||'').localeCompare(a.handledAt||''))
+    .forEach(s => { if (!seen.has(s.brandId)){ seen.add(s.brandId); rows.push(s); } });
+  return rows;
+}
+
 function vRadar(){
-  const f = S.f;
-  const types = [...new Set(S.signals.map(s => s.type))].sort();
-  const list = S.signals.filter(s => (!f.sigStatus || s.status === f.sigStatus) && (!f.sigType || s.type === f.sigType) && (!f.sector || s.sector === f.sector))
-    .sort((a,b) => b.score - a.score || (b.published||'').localeCompare(a.published||''));
+  const f = S.f, tab = S.radarTab || 'review';
+  const fresh = S.signals.filter(s => s.status === 'new');
+  const inScope = fresh.filter(s => !f.sector || s.sector === f.sector);
+  const scopeGroups = groupSigs(inScope);
+  const typeCounts = {}; scopeGroups.forEach(g => g.forEach(s => typeCounts[s.type] = (typeCounts[s.type] || 0) + (s === g.find(x => x.type === s.type) ? 1 : 0)));
+  const list = inScope.filter(s => !f.sigType || s.type === f.sigType);
+  const groups = groupSigs(list);
+  const contacts = contactListRows();
+  const done = S.signals.filter(s => s.status !== 'new');
   const last = S.signals.reduce((m, s) => s.createdAt > m ? s.createdAt : m, '');
-  return `<div class="filters">
-    <select data-f="sigStatus"><option value="new" ${f.sigStatus==='new'?'selected':''}>New</option><option value="added" ${f.sigStatus==='added'?'selected':''}>Added</option><option value="dismissed" ${f.sigStatus==='dismissed'?'selected':''}>Dismissed</option><option value="" ${!f.sigStatus?'selected':''}>All</option></select>
-    <select data-f="sigType"><option value="">All signal types</option>${types.map(t => `<option ${f.sigType===t?'selected':''}>${t}</option>`).join('')}</select>
-    <select data-f="sector"><option value="">All sectors</option>${SECTORS.map(s => `<option ${f.sector===s?'selected':''}>${s}</option>`).join('')}</select>
-    <span style="flex:1"></span>
-    <span class="small muted">${last ? 'Last scan ' + new Date(last).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Not scanned yet'}</span>
+  const strong = groupSigs(fresh).filter(g => g[0].score >= 8).length;
+  const lastTxt = last ? `Last scan ${dayAgo(last).toLowerCase() === 'today' ? 'today at ' + new Date(last).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) : dayAgo(last).toLowerCase()}` : 'Not scanned yet';
+
+  const head = `<div class="rhead">
+    <div><div class="rhead-t">${fresh.length ? `${groupSigs(fresh).length} brands in the news${strong ? `, <span class="hot-t">${strong} strong ${strong === 1 ? 'lead' : 'leads'}</span>` : ''}` : 'All caught up'}</div>
+      <div class="small muted">${lastTxt} · scans UK fashion, beauty, sport and lifestyle news every morning at 7am</div></div>
     <button class="btn" data-act="scan" ${S.scanning?'disabled':''}>${S.scanning ? 'Scanning…' : 'Scan now'}</button>
   </div>
-  <div class="small muted" style="margin:-6px 0 12px">Scans UK fashion, beauty, sport and retail news every morning for new marketing and ecommerce hires, rebrands, launches, funding, store openings and agency reviews. Higher scores are stronger reasons to get in touch.</div>
-  ${!S.signals.length ? `<div class="clash soft" style="margin-bottom:14px"><b>The automatic news scan isn't switched on yet.</b> It needs the Firebase Blaze plan and a one-off deploy of the radar (see the setup guide). Until then this page stays empty; everything else works.</div>` : ''}
-  <div class="card">${list.length ? list.map(s => sigRow(s)).join('') : '<div class="empty">Nothing here yet.</div>'}</div>`;
+  <div class="seg">
+    <button class="${tab==='review'?'on':''}" data-act="rtab" data-v="review">To review <b>${groupSigs(fresh).length}</b></button>
+    <button class="${tab==='list'?'on':''}" data-act="rtab" data-v="list">Contact list <b>${contacts.length}</b></button>
+    <button class="${tab==='done'?'on':''}" data-act="rtab" data-v="done">Done <b>${done.length}</b></button>
+  </div>
+  ${!S.signals.length ? `<div class="clash soft" style="margin-bottom:14px"><b>No news yet.</b> The radar scans every morning at 7am, or press Scan now.</div>` : ''}`;
+
+  if (tab === 'list'){
+    return head + `<div class="small muted" style="margin:0 0 12px">Brands you've picked from the radar. Each one is also on Today, ready to chase.</div>
+    <div class="card">${contacts.length ? contacts.map(s => {
+      const b = byId(s.brandId), mainC = (b.contacts || []).find(c => c.email), named = (b.contacts || []).find(c => c.name && !c.email);
+      const who = whoFor(s);
+      const ci = mainC ? b.contacts.indexOf(mainC) : -1;
+      return `<div class="cl">
+        <div class="cl-main">
+          <div><a href="#" data-open="${b.id}"><b>${esc(b.name)}</b></a> <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span> <span class="chip">${esc(b.stage)}</span></div>
+          <div class="small muted cl-why">${esc(cleanTitle(s.title))}</div>
+        </div>
+        <div class="cl-who">${mainC
+          ? `<span class="small">Contact</span><b>${esc(mainC.name || mainC.email)}</b><span class="small muted">${esc(mainC.title || '')}</span>`
+          : `<span class="small">Still need</span><b>${esc(named ? named.name : (who.name || who.role || 'A contact'))}</b><span class="small muted">${named ? 'No email yet' : 'Not in your contacts yet'}</span>`}</div>
+        <div class="cl-act">${mainC
+          ? `<button class="btn sm dark" data-compose="${b.id}" data-ci="${ci}">Email ${esc(firstName(mainC.name) || 'them')}</button>`
+          : `<a class="btn sm" href="${linkedInUrl(b.name, named ? named.name : (who.name || who.role))}" target="_blank" rel="noopener">Find on LinkedIn</a><button class="btn sm dark" data-open="${b.id}">Add email</button>`}</div>
+      </div>`; }).join('') : '<div class="empty">Nothing here yet. Press "Add to contact list" on a story to start.</div>'}</div>`;
+  }
+
+  if (tab === 'done'){
+    const L = done.sort((a, b) => (b.handledAt||'').localeCompare(a.handledAt||'')).slice(0, 80);
+    return head + `<div class="card">${L.length ? L.map(s => `<div class="rr">
+      <div class="rr-main"><div><b>${esc(sigBrandName(s) || 'Unnamed')}</b> <span class="chip ${s.status==='added'?'ok':''}">${s.status === 'added' ? 'Added' : 'Not relevant'}</span> <span class="small muted">${s.handledBy ? 'by ' + esc(s.handledBy.split(' ')[0]) : ''}</span></div>
+        <a class="rr-head" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(cleanTitle(s.title))}</a></div>
+      <div class="rr-act">${s.status === 'dismissed' ? `<button class="btn sm ghost" data-sig-undo="${s.id}">Undo</button>` : ''}</div>
+    </div>`).join('') : '<div class="empty">Nothing handled yet.</div>'}</div>`;
+  }
+
+  const types = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a]);
+  const filters = `<div class="tchips">
+    <button class="${!f.sigType?'on':''}" data-act="rtype" data-v="">All <b>${scopeGroups.length}</b></button>
+    ${types.map(t => `<button class="${f.sigType===t?'on':''}" data-act="rtype" data-v="${esc(t)}">${esc(t)} <b>${typeCounts[t]}</b></button>`).join('')}
+    <span style="flex:1"></span>
+    <select data-f="sector"><option value="">All sectors</option>${SECTORS.map(s => `<option ${f.sector===s?'selected':''}>${s}</option>`).join('')}</select>
+  </div>`;
+  if (!groups.length) return head + filters + `<div class="card"><div class="empty">${fresh.length ? 'Nothing matches these filters.' : 'You\'re all caught up. New stories arrive every morning at 7am.'}</div></div>`;
+
+  const picks = groups.filter(g => !clientInTitle(g[0].title)).slice(0, 3);
+  const rest = groups.filter(g => !picks.includes(g));
+  const limit = S.radarMore || 25;
+  return head + filters + `
+    <div class="rsec"><h3>Top picks</h3><span class="small muted">The strongest reasons to get in touch right now</span></div>
+    <div class="rgrid">${picks.map(g => radarCard(g, true)).join('')}</div>
+    ${rest.length ? `<div class="rsec"><h3>Everything else</h3><span class="small muted">${rest.length} more ${rest.length === 1 ? 'brand' : 'brands'}, strongest first. Click a headline to read the story.</span></div>
+    <div class="card">${rest.slice(0, limit).map(radarRow).join('')}</div>
+    ${rest.length > limit ? `<div style="text-align:center;margin-top:12px"><button class="btn" data-act="rmore">Show ${Math.min(25, rest.length - limit)} more</button></div>` : ''}` : ''}`;
 }
 
 function guessBrand(title){
@@ -950,32 +1172,57 @@ function guessBrand(title){
   return t.split(/\s+/).length <= 5 ? t : '';
 }
 
-async function sigAdd(id){
+async function markSigs(ids, patch){
+  for (const id of ids) await store.updateSignal(id, {...patch, handledBy: me(), handledAt: new Date().toISOString()});
+}
+async function sigAdd(id, groupIds){
   const s = S.signals.find(x => x.id === id); if (!s) return;
+  const ids = groupIds && groupIds.length ? groupIds : [id];
+  const lastSignal = {type: s.type, title: s.title, link: s.link, date: today()};
+  const who = whoFor(s);
   if (s.brandId && byId(s.brandId)){
     const b = byId(s.brandId);
-    await store.update(b.id, {nextFollowUp: today(), priority: b.priority === 'Low' ? 'Medium' : b.priority, lastSignal: {type: s.type, title: s.title, link: s.link, date: today()}}, entry('Signal', `${s.type}: ${s.title}`));
-    await store.updateSignal(id, {status:'added', handledBy: me(), handledAt: new Date().toISOString()});
-    openBrand(b.id); toast('Added to today\'s chase list');
+    const patch = {nextFollowUp: today(), priority: b.priority === 'Low' ? 'Medium' : b.priority, lastSignal};
+    if (who.named && !(b.contacts || []).some(c => (c.name || '').toLowerCase() === who.name.toLowerCase()))
+      patch.contacts = [...(b.contacts || []), {name: who.name, title: who.role, email:'', phone:'', linkedin:'', flag:''}];
+    await store.update(b.id, patch, entry('Signal', `${s.type}: ${s.title}`));
+    await markSigs(ids, {status:'added', brandId: b.id});
+    toast(`${b.name} is on today's chase list${patch.contacts ? ` and ${who.name} is saved as a contact` : ''}`);
     return;
   }
-  const guess = s.brandGuess || guessBrand(s.title);
-  modal(`<h3>Add to pipeline</h3>
-    <label class="l">Brand name</label><input class="f" id="m-name" value="${esc(guess)}">
+  const guess = sigBrandName(s);
+  modal(`<h3>Add to your contact list</h3>
+    <p class="small muted" style="margin:-4px 0 14px">${esc(cleanTitle(s.title))}</p>
+    <label class="l">Brand name</label><input class="f" id="m-name" value="${esc(guess)}" placeholder="Who is the story about?">
     <div class="grid2" style="margin-top:12px">
       <div><label class="l">Sector</label><select class="f" id="m-sector">${SECTORS.map(x => `<option ${x===(s.sector||'Other')?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div><label class="l">Priority</label><select class="f" id="m-prio">${PRIORITIES.map(x => `<option ${x==='Medium'?'selected':''}>${x}</option>`).join('')}</select></div>
-    </div>`, async () => {
-      const name = $('#m-name').value.trim(); if (!name) return false;
+      <div><label class="l">Priority</label><select class="f" id="m-prio">${PRIORITIES.map(x => `<option ${x===(s.score >= 8 ? 'High' : 'Medium')?'selected':''}>${x}</option>`).join('')}</select></div>
+    </div>
+    <label class="l" style="margin-top:12px">Who to contact <span class="muted">(optional)</span></label>
+    <div class="grid2"><input class="f" id="m-cname" value="${esc(who.name || '')}" placeholder="Name, if you know it"><input class="f" id="m-crole" value="${esc(who.role || '')}" placeholder="Job title"></div>
+    <p class="small muted" style="margin:8px 0 0">It goes on Today's chase list, and the story becomes the opening line of your email.</p>`, async () => {
+      const name = $('#m-name').value.trim(); if (!name){ toast('Add the brand name'); return false; }
+      const cname = $('#m-cname').value.trim(), crole = $('#m-crole').value.trim();
+      const contact = cname ? [{name: cname, title: crole, email:'', phone:'', linkedin:'', flag:''}] : [];
       const existing = S.brands.find(b => b.name.toLowerCase() === name.toLowerCase());
       let bid;
-      const lastSignal = {type: s.type, title: s.title, link: s.link, date: today()};
-      if (existing){ bid = existing.id; await store.update(bid, {nextFollowUp: today(), lastSignal}, entry('Signal', `${s.type}: ${s.title}`)); }
-      else bid = await store.create({...newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, nextFollowUp: today(),
-        notes: `Found via radar: ${s.title}\n${s.link}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}), lastSignal});
-      await store.updateSignal(id, {status:'added', brandId: bid, handledBy: me(), handledAt: new Date().toISOString()});
-      toast(`${name} added`); setTimeout(() => openBrand(bid), 200);
-    }, 'Add');
+      if (existing){
+        bid = existing.id;
+        const contacts = [...(existing.contacts || [])];
+        if (cname && !contacts.some(c => (c.name||'').toLowerCase() === cname.toLowerCase())) contacts.push(contact[0]);
+        await store.update(bid, {nextFollowUp: today(), lastSignal, contacts}, entry('Signal', `${s.type}: ${s.title}`));
+      } else bid = await store.create({...newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, nextFollowUp: today(),
+        notes: `Found via radar: ${s.title}\n${s.link}${!cname && crole ? `\nWho to contact: ${crole}` : ''}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}), contacts: contact, lastSignal});
+      await markSigs(ids, {status:'added', brandId: bid});
+      toast(`${name} added to your contact list`);
+    }, 'Add to list');
+}
+async function sigEmail(id){
+  const s = S.signals.find(x => x.id === id); const b = s && byId(s.brandId); if (!b) return;
+  await store.update(b.id, {lastSignal: {type: s.type, title: s.title, link: s.link, date: today()}}, entry('Signal', `${s.type}: ${s.title}`));
+  await markSigs([id], {status:'added', brandId: b.id});
+  const ci = (b.contacts || []).findIndex(c => c.email);
+  openCompose(b.id, ci < 0 ? null : ci);
 }
 
 // ---------- Dashboard ----------
@@ -1328,7 +1575,7 @@ function modal(html, onOk, okLabel = 'Save'){
 //  Events
 // ===================================================================
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit]');
+  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-sig-email],[data-sig-undo],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit]');
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
@@ -1338,8 +1585,10 @@ document.addEventListener('click', async e => {
     if (d.snooze) return snooze(d.snooze, Number(d.days));
     if (d.stage) return setStage(S.open, d.stage);
     if (d.sort){ S.f.dir = S.f.sort === d.sort ? -S.f.dir : 1; S.f.sort = d.sort; return render(); }
-    if (d.sigAdd) return sigAdd(d.sigAdd);
-    if (d.sigDismiss){ await store.updateSignal(d.sigDismiss, {status:'dismissed', handledBy: me(), handledAt: new Date().toISOString()}); return; }
+    if (d.sigAdd) return sigAdd(d.sigAdd, d.group ? d.group.split(',') : null);
+    if (d.sigDismiss){ await markSigs(d.group ? d.group.split(',') : [d.sigDismiss], {status:'dismissed'}); return; }
+    if (d.sigEmail) return sigEmail(d.sigEmail);
+    if (d.sigUndo){ await store.updateSignal(d.sigUndo, {status:'new', handledBy: me(), handledAt: new Date().toISOString()}); return; }
     if (d.editContact !== undefined){ S.editingContact = Number(d.editContact); return renderDrawer(); }
     if (d.openClient){ e.preventDefault(); $('#gres')?.classList.add('hidden'); S.open = null; S.openClient = d.openClient; S.editingCC = null; return renderDrawer(); }
     if (d.ccEdit !== undefined){ S.editingCC = d.ccEdit === 'new' ? 'new' : Number(d.ccEdit) < 0 ? null : Number(d.ccEdit); return renderDrawer(); }
@@ -1354,6 +1603,9 @@ document.addEventListener('click', async e => {
         }
         break;
       case 'signout': store.signOut(); break;
+      case 'rtab': S.radarTab = d.v; render(); $('.main').scrollTop = 0; break;
+      case 'rtype': S.f.sigType = d.v; S.radarMore = 0; render(); break;
+      case 'rmore': S.radarMore = (S.radarMore || 25) + 25; render(); break;
       case 'close': closeDrawer(); break;
       case 'clear-f': Object.assign(S.f, {q:'', sector:'', stage:'', prio:''}); render(); break;
       case 'toggle-paused': S.f.showPaused = t.checked; render(); break;
