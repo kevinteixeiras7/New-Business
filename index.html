@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seventy7 New Business</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23141414'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3E77%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4f0; --panel:#ffffff; --ink:#141414; --ink2:#3a3a3a; --muted:#7a7873; --line:#e6e3dc; --line2:#efede8;
+  --accent:#141414; --hot:#c2410c; --hot-bg:#fdf0e9; --ok:#15803d; --ok-bg:#eaf6ee; --warn:#a16207; --warn-bg:#fdf6e3;
+  --blue:#1d4ed8; --blue-bg:#ecf1fd; --r:10px; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+.hidden{display:none!important}
+
+/* shell */
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh}
+.side{background:var(--ink);color:#fff;display:flex;flex-direction:column;padding:22px 14px}
+.logo{font-weight:700;font-size:17px;letter-spacing:-.02em;padding:0 10px 4px}
+.logo small{display:block;font-weight:500;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a8a6a0;margin-top:2px}
+.nav{margin-top:26px;display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:8px;color:#cfcdc7;font-weight:500}
+.nav button:hover{background:#262626;color:#fff}
+.nav button.on{background:#fff;color:var(--ink)}
+.nav .count{font-size:11px;font-weight:600;background:var(--hot);color:#fff;border-radius:20px;padding:1px 7px}
+.nav button.on .count{background:var(--hot)}
+.xlink{margin-top:auto;display:block;padding:9px 10px;margin-bottom:8px;border:1px solid #333;border-radius:8px;color:#cfcdc7;text-decoration:none;font-weight:500;font-size:13px}
+.xlink:hover{border-color:#666;color:#fff}
+.pv{position:fixed;bottom:14px;right:14px;z-index:90;background:#fff;border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
+.side .me{padding:10px;border-top:1px solid #2a2a2a;font-size:12px;color:#a8a6a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side .me b{color:#fff;font-weight:600;display:block;font-size:13px}
+.side .me button{all:unset;cursor:pointer;text-decoration:underline;margin-top:6px;display:inline-block}
+.main{overflow:auto;display:flex;flex-direction:column}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:12px;padding:18px 28px 14px;border-bottom:1px solid var(--line)}
+.top h1{font-size:22px;letter-spacing:-.02em;margin:0;flex:1}
+.search{position:relative}
+.search input{width:260px;padding:9px 12px 9px 32px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.45}
+.results{position:absolute;top:42px;right:0;width:340px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:360px;overflow:auto;z-index:30}
+.results div{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--line2)}
+.results div:hover{background:var(--bg)}
+.content{padding:24px 28px 60px}
+
+/* elements */
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:#cfcbc2}
+.btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.dark:hover{background:#333}
+.btn.sm{padding:5px 9px;font-size:12px;border-radius:7px}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--line2)}
+.btn.danger{color:var(--hot)}
+.btn:disabled{opacity:.5;cursor:default}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--line2);color:var(--ink2);white-space:nowrap}
+.chip.hot{background:var(--hot-bg);color:var(--hot)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.blue{background:var(--blue-bg);color:var(--blue)}
+.chip.dark{background:var(--ink);color:#fff}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.panel-h h3{margin:0;font-size:14px}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+input.f,select.f,textarea.f{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+textarea.f{resize:vertical;min-height:70px}
+label.l{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.filters select,.filters input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+
+/* today */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat{padding:16px 18px}
+.stat .n{font-size:28px;font-weight:700;letter-spacing:-.03em}
+.stat .t{color:var(--muted);font-size:12px;font-weight:500}
+.stat.hot .n{color:var(--hot)}
+.today{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;align-items:start}
+.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.row:last-child{border-bottom:none}
+.row .who{flex:1;min-width:0;cursor:pointer}
+.row .who b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .who span{font-size:12px;color:var(--muted)}
+.row .acts{display:flex;gap:6px;flex-shrink:0}
+.due{font-size:12px;font-weight:600;white-space:nowrap}
+.due.over{color:var(--hot)}
+.due.today{color:var(--warn)}
+.group-label{padding:10px 16px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:#fbfaf8;border-bottom:1px solid var(--line2)}
+
+/* board */
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(205px,1fr);gap:12px;overflow-x:auto;padding-bottom:10px;align-items:start}
+.col{background:#ebe9e3;border-radius:var(--r);padding:8px;min-height:200px}
+.col.drag{outline:2px dashed #999;outline-offset:-4px}
+.col-h{display:flex;justify-content:space-between;align-items:center;padding:6px 6px 10px;font-weight:600;font-size:13px}
+.col-h span{color:var(--muted);font-weight:500}
+.bc{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 11px;margin-bottom:7px;cursor:grab;box-shadow:0 1px 1px rgba(0,0,0,.03)}
+.bc:hover{border-color:#cfcbc2}
+.bc b{display:block;font-size:13px;margin-bottom:5px}
+.bc .meta{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.bc.dragging{opacity:.4}
+.col .more{text-align:center;padding:6px;font-size:12px;color:var(--muted)}
+
+/* table */
+table.t{width:100%;border-collapse:collapse;background:#fff}
+table.t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);background:#fbfaf8;cursor:pointer;white-space:nowrap;position:sticky;top:0}
+table.t td{padding:10px 12px;border-bottom:1px solid var(--line2);vertical-align:middle}
+table.t tr.click{cursor:pointer}
+table.t tr.click:hover td{background:#fbfaf8}
+
+/* radar */
+.sig{display:flex;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.sig:last-child{border-bottom:none}
+.score{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-weight:700;flex-shrink:0;background:var(--line2)}
+.score.s-hi{background:var(--ink);color:#fff}
+.score.s-mid{background:#d9d6ce}
+.sig .body{flex:1;min-width:0}
+.sig .body a{font-weight:600;text-decoration:none}
+.sig .body a:hover{text-decoration:underline}
+.sig .line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+
+/* dashboard */
+.dash{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.bar{height:8px;background:var(--line2);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink)}
+.funnel .fr{display:grid;grid-template-columns:120px 1fr 40px;gap:10px;align-items:center;padding:7px 16px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(20,20,20,.28);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:41;display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,.12)}
+.dh{padding:18px 22px;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.dh h2{margin:0;font-size:20px;letter-spacing:-.02em}
+.dbody{flex:1;overflow:auto;padding:18px 22px 40px;display:flex;flex-direction:column;gap:16px}
+.sec{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.sec h4{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.contact{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line2)}
+.contact:last-child{border-bottom:none}
+.contact .ci{flex:1;min-width:0}
+.contact .ci b{font-weight:600}
+.contact .ci .small{word-break:break-all}
+.log{border-left:2px solid var(--line);padding-left:12px;margin-left:4px}
+.log div{padding:5px 0 8px;position:relative}
+.log div:before{content:"";position:absolute;left:-17px;top:10px;width:8px;height:8px;border-radius:50%;background:#c9c5bb}
+.stagebar{display:flex;gap:4px;flex-wrap:wrap}
+.stagebar button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer}
+.stagebar button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* modal + toast */
+.modal{position:fixed;inset:0;display:grid;place-items:center;z-index:60;background:rgba(20,20,20,.35)}
+.modal .box{background:#fff;border-radius:12px;width:min(520px,92vw);padding:20px 22px;box-shadow:var(--shadow)}
+.modal h3{margin:0 0 14px}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:9px;z-index:80;font-weight:500;box-shadow:var(--shadow)}
+
+/* login */
+.login{min-height:100vh;display:grid;place-items:center;background:var(--ink);color:#fff}
+.login .box{text-align:center;max-width:380px;padding:30px}
+.login h1{font-size:30px;letter-spacing:-.03em;margin:0 0 6px}
+.login p{color:#a8a6a0;margin:0 0 26px}
+.login .btn{padding:11px 18px;font-weight:600}
+.login .err{margin-top:18px;color:#fca5a5;font-size:13px}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side{flex-direction:row;align-items:center;padding:10px 12px;overflow-x:auto}
+  .side .nav{flex-direction:row;margin:0 0 0 14px}
+  .side .me,.logo small,.xlink{display:none}
+  .today,.dash{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .top{flex-wrap:wrap;padding:14px 16px}
+  .top h1{flex-basis:100%;font-size:19px}
+  .search{flex:1}.search input{width:100%}
+  .results{left:0;right:auto;width:100%}
+  .content{padding:16px}
+  .row{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="layer"></div>
+<script>window.__SAMPLE = {"brands": [{"id": "b0", "name": "Halden Run", "sector": "Sportswear", "website": "", "stage": "Prospect", "priority": "High", "lastContact": null, "nextFollowUp": null, "contacts": [], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b1", "name": "Northwell Active", "sector": "Sportswear", "website": "", "stage": "Contacted", "priority": "Medium", "lastContact": "2026-11-13", "nextFollowUp": "2026-11-14", "contacts": [{"name": "Ben Kaur", "title": "Creative Producer", "email": "ben.kaur@northwellactive.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Tom Patel", "title": "Head of Brand Marketing", "email": "tom.patel@northwellactive.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x1a", "date": "2026-09-11", "type": "Email", "text": "First outreach", "by": "Kate"}, {"id": "x1b", "date": "2026-11-13", "type": "LinkedIn", "text": "Sent portfolio", "by": "Kevin"}]}, {"id": "b2", "name": "Pace & Pine", "sector": "Sportswear", "website": "", "stage": "Meeting", "priority": "Medium", "lastContact": "2026-10-25", "nextFollowUp": "2026-11-22", "contacts": [{"name": "Ben Clarke", "title": "Content Lead", "email": "ben.clarke@paceandpine.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Ruby Patel", "title": "Founder", "email": "ruby.patel@paceandpine.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Ellie Fisher", "title": "Head of Brand Marketing", "email": "ellie.fisher@paceandpine.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "Model and ecomm", "campaignType": "", "log": [{"id": "x2a", "date": "2026-10-05", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x2b", "date": "2026-10-25", "type": "Email", "text": "Chatted about SS27 shoots", "by": "Kevin"}]}, {"id": "b3", "name": "Corran Golf", "sector": "Sportswear", "website": "", "stage": "Prospect", "priority": "Medium", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Priya Okafor", "title": "Studio Manager", "email": "priya.okafor@corrangolf.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Olivia Reid", "title": "Content Lead", "email": "olivia.reid@corrangolf.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b4", "name": "Vela Swim", "sector": "Sportswear", "website": "", "stage": "Portfolio Sent", "priority": "Low", "lastContact": "2026-11-01", "nextFollowUp": "2026-11-18", "contacts": [{"name": "Isla Hart", "title": "Ecommerce Manager", "email": "isla.hart@velaswim.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Ben Patel", "title": "Content Lead", "email": "ben.patel@velaswim.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Grace Moreno", "title": "Content Lead", "email": "grace.moreno@velaswim.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x4a", "date": "2026-08-13", "type": "Email", "text": "First outreach", "by": "Kate"}, {"id": "x4b", "date": "2026-11-01", "type": "Call", "text": "Sent portfolio", "by": "Emily"}]}, {"id": "b5", "name": "Fieldhouse FC", "sector": "Sportswear", "website": "", "stage": "Prospect", "priority": "Low", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Jess Moreno", "title": "Marketing Manager", "email": "jess.moreno@fieldhousefc.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b6", "name": "Lumen Skin", "sector": "Beauty", "website": "", "stage": "Contacted", "priority": "Medium", "lastContact": "2026-10-28", "nextFollowUp": "2026-11-18", "contacts": [{"name": "Noah Ward", "title": "Content Lead", "email": "noah.ward@lumenskin.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Amelia Rossi", "title": "Content Lead", "email": "amelia.rossi@lumenskin.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x6a", "date": "2026-10-07", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x6b", "date": "2026-10-28", "type": "Call", "text": "Sent portfolio", "by": "Kelly"}]}, {"id": "b7", "name": "Orris & Oak", "sector": "Beauty", "website": "", "stage": "Proposal", "priority": "Medium", "lastContact": "2026-11-11", "nextFollowUp": "2026-11-20", "contacts": [{"name": "Noah Clarke", "title": "Founder", "email": "noah.clarke@orrisandoak.example", "phone": "", "linkedin": "", "flag": "Email domain doesn't match brand, worth checking"}], "notes": "", "budget": "6 shoots a year", "opportunity": "Full service", "shootType": "Model and ecomm", "campaignType": "", "log": [{"id": "x7a", "date": "2026-10-18", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x7b", "date": "2026-11-11", "type": "Call", "text": "Chatted about SS27 shoots", "by": "Kelly"}]}, {"id": "b8", "name": "Petal Lab", "sector": "Beauty", "website": "", "stage": "Contacted", "priority": "High", "lastContact": "2026-11-09", "nextFollowUp": "2026-11-18", "contacts": [{"name": "Ellie Ward", "title": "Studio Manager", "email": "ellie.ward@petallab.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Sophie Bennett", "title": "Ecommerce Manager", "email": "sophie.bennett@petallab.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Olivia Bennett", "title": "Head of Brand Marketing", "email": "olivia.bennett@petallab.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x8a", "date": "2026-08-05", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x8b", "date": "2026-11-09", "type": "Call", "text": "Follow-up sent", "by": "Jayne"}]}, {"id": "b9", "name": "Glasshouse Beauty", "sector": "Beauty", "website": "", "stage": "Portfolio Sent", "priority": "Low", "lastContact": "2026-10-29", "nextFollowUp": "2026-11-25", "contacts": [{"name": "Isla Nash", "title": "Content Lead", "email": "isla.nash@glasshousebeauty.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x9a", "date": "2026-08-11", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x9b", "date": "2026-10-29", "type": "Email", "text": "Sent portfolio", "by": "Kira"}]}, {"id": "b10", "name": "Kindred Hair", "sector": "Beauty", "website": "", "stage": "Portfolio Sent", "priority": "High", "lastContact": "2026-11-02", "nextFollowUp": "2026-11-14", "contacts": [{"name": "Noah Clarke", "title": "Ecommerce Manager", "email": "noah.clarke@kindredhair.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Kai Ward", "title": "Studio Manager", "email": "kai.ward@kindredhair.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Jess Lowe", "title": "Ecommerce Manager", "email": "jess.lowe@kindredhair.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x10a", "date": "2026-10-02", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x10b", "date": "2026-11-02", "type": "Email", "text": "Chatted about SS27 shoots", "by": "Kevin"}]}, {"id": "b11", "name": "Saltmarsh Skincare", "sector": "Beauty", "website": "", "stage": "Proposal", "priority": "Medium", "lastContact": "2026-10-28", "nextFollowUp": "2026-11-20", "contacts": [{"name": "Hannah Nash", "title": "Ecommerce Manager", "email": "hannah.nash@saltmarshskincare.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "6 shoots a year", "opportunity": "Full service", "shootType": "Model and ecomm", "campaignType": "", "log": [{"id": "x11a", "date": "2026-09-12", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x11b", "date": "2026-10-28", "type": "Email", "text": "Follow-up sent", "by": "Kevin"}]}, {"id": "b12", "name": "Marlowe Studio", "sector": "Womens Fashion", "website": "", "stage": "Prospect", "priority": "Low", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Ellie Rossi", "title": "Ecommerce Manager", "email": "ellie.rossi@marlowestudio.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Tom Kaur", "title": "Founder", "email": "tom.kaur@marlowestudio.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b13", "name": "Ivy Lane", "sector": "Womens Fashion", "website": "", "stage": "Portfolio Sent", "priority": "High", "lastContact": "2026-11-16", "nextFollowUp": "2026-11-25", "contacts": [{"name": "Kai Fisher", "title": "Ecommerce Manager", "email": "kai.fisher@ivylane.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Hannah Okafor", "title": "Content Lead", "email": "hannah.okafor@ivylane.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Leah Rossi", "title": "Creative Producer", "email": "leah.rossi@ivylane.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x13a", "date": "2026-08-23", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x13b", "date": "2026-11-16", "type": "LinkedIn", "text": "Chatted about SS27 shoots", "by": "Kelly"}]}, {"id": "b14", "name": "Solenne", "sector": "Womens Fashion", "website": "", "stage": "Prospect", "priority": "Medium", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Priya Moreno", "title": "Marketing Manager", "email": "priya.moreno@solenne.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Freya Ahmed", "title": "Creative Producer", "email": "freya.ahmed@solenne.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b15", "name": "The Draper's Daughter", "sector": "Womens Fashion", "website": "", "stage": "Portfolio Sent", "priority": "Medium", "lastContact": "2026-11-09", "nextFollowUp": "2026-11-17", "contacts": [{"name": "Ben Nash", "title": "Content Lead", "email": "ben.nash@thedrapersdaughter.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x15a", "date": "2026-08-08", "type": "Email", "text": "First outreach", "by": "Kate"}, {"id": "x15b", "date": "2026-11-09", "type": "Email", "text": "Follow-up sent", "by": "Kira"}]}, {"id": "b16", "name": "Wren & Wilde", "sector": "Womens Fashion", "website": "", "stage": "Prospect", "priority": "Medium", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Amelia Hart", "title": "Marketing Manager", "email": "amelia.hart@wrenandwilde.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Kai Fisher", "title": "Head of Brand Marketing", "email": "kai.fisher@wrenandwilde.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b17", "name": "Atelier Noor", "sector": "Womens Fashion", "website": "", "stage": "Won", "priority": "Medium", "lastContact": "2026-11-01", "nextFollowUp": null, "contacts": [{"name": "Ellie Ahmed", "title": "Ecommerce Manager", "email": "ellie.ahmed@ateliernoor.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Sophie Okafor", "title": "Head of Brand Marketing", "email": "sophie.okafor@ateliernoor.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Kai Lowe", "title": "Content Lead", "email": "kai.lowe@ateliernoor.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "6 shoots a year", "opportunity": "", "shootType": "Model and ecomm", "campaignType": "", "log": [{"id": "x17a", "date": "2026-10-02", "type": "Email", "text": "First outreach", "by": "Kate"}, {"id": "x17b", "date": "2026-11-01", "type": "LinkedIn", "text": "Sent portfolio", "by": "Kira"}]}, {"id": "b18", "name": "Pebble Row", "sector": "Womens Fashion", "website": "", "stage": "Contacted", "priority": "Low", "lastContact": "2026-11-11", "nextFollowUp": "2026-11-20", "contacts": [{"name": "Tom Clarke", "title": "Head of Brand Marketing", "email": "tom.clarke@pebblerow.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x18a", "date": "2026-08-28", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x18b", "date": "2026-11-11", "type": "LinkedIn", "text": "Chatted about SS27 shoots", "by": "Emily"}]}, {"id": "b19", "name": "Kestrel Menswear", "sector": "Mens Fashion", "website": "", "stage": "Contacted", "priority": "Medium", "lastContact": "2026-11-12", "nextFollowUp": "2026-11-17", "contacts": [{"name": "Priya Moreno", "title": "Creative Producer", "email": "priya.moreno@kestrelmenswear.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Olivia Bennett", "title": "Head of Ecommerce", "email": "olivia.bennett@kestrelmenswear.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Hannah Patel", "title": "Founder", "email": "hannah.patel@kestrelmenswear.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x19a", "date": "2026-08-06", "type": "Email", "text": "First outreach", "by": "Kate"}, {"id": "x19b", "date": "2026-11-12", "type": "LinkedIn", "text": "Asked who handles ecomm production", "by": "Jayne"}]}, {"id": "b20", "name": "Oxbow Tailoring", "sector": "Mens Fashion", "website": "", "stage": "Meeting", "priority": "Medium", "lastContact": "2026-10-24", "nextFollowUp": "2026-11-14", "contacts": [{"name": "Amelia Reid", "title": "Ecommerce Manager", "email": "amelia.reid@oxbowtailoring.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "Model and ecomm", "campaignType": "", "log": [{"id": "x20a", "date": "2026-08-22", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x20b", "date": "2026-10-24", "type": "Call", "text": "Follow-up sent", "by": "Kelly"}]}, {"id": "b21", "name": "Greyhaven", "sector": "Mens Fashion", "website": "", "stage": "Portfolio Sent", "priority": "Medium", "lastContact": "2026-10-29", "nextFollowUp": "2026-11-14", "contacts": [{"name": "Daniel Nash", "title": "Head of Brand Marketing", "email": "daniel.nash@greyhaven.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x21a", "date": "2026-07-23", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x21b", "date": "2026-10-29", "type": "Call", "text": "Asked who handles ecomm production", "by": "Kelly"}]}, {"id": "b22", "name": "Calder Bags", "sector": "Accessories", "website": "", "stage": "Prospect", "priority": "High", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Freya Bennett", "title": "Creative Producer", "email": "freya.bennett@calderbags.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Freya Nash", "title": "Head of Ecommerce", "email": "freya.nash@calderbags.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Ruby Reid", "title": "Creative Producer", "email": "ruby.reid@calderbags.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b23", "name": "Footnote Shoes", "sector": "Accessories", "website": "", "stage": "Contacted", "priority": "Low", "lastContact": "2026-10-24", "nextFollowUp": "2026-11-25", "contacts": [{"name": "Olivia Bennett", "title": "Founder", "email": "olivia.bennett@footnoteshoes.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x23a", "date": "2026-08-10", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x23b", "date": "2026-10-24", "type": "LinkedIn", "text": "Sent portfolio", "by": "Jayne"}]}, {"id": "b24", "name": "Arlo Eyewear", "sector": "Accessories", "website": "", "stage": "Prospect", "priority": "Medium", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Ben Hart", "title": "Head of Brand Marketing", "email": "ben.hart@arloeyewear.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b25", "name": "Ember & Gold", "sector": "Jewellery", "website": "", "stage": "Contacted", "priority": "Low", "lastContact": "2026-11-14", "nextFollowUp": "2026-11-22", "contacts": [{"name": "Jess Reid", "title": "Ecommerce Manager", "email": "jess.reid@emberandgold.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Freya Rossi", "title": "Head of Ecommerce", "email": "freya.rossi@emberandgold.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x25a", "date": "2026-07-23", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x25b", "date": "2026-11-14", "type": "Call", "text": "Follow-up sent", "by": "Jayne"}]}, {"id": "b26", "name": "Little Lune", "sector": "Jewellery", "website": "", "stage": "Prospect", "priority": "Low", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Freya Fisher", "title": "Head of Brand Marketing", "email": "freya.fisher@littlelune.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b27", "name": "Tidal Silver", "sector": "Jewellery", "website": "", "stage": "Meeting", "priority": "Medium", "lastContact": "2026-11-06", "nextFollowUp": "2026-11-16", "contacts": [{"name": "Isla Okafor", "title": "Studio Manager", "email": "isla.okafor@tidalsilver.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "Model and ecomm", "campaignType": "", "log": [{"id": "x27a", "date": "2026-09-02", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x27b", "date": "2026-11-06", "type": "LinkedIn", "text": "Follow-up sent", "by": "Kira"}]}, {"id": "b28", "name": "Bramble Kids", "sector": "Kidswear", "website": "", "stage": "Contacted", "priority": "Medium", "lastContact": "2026-11-02", "nextFollowUp": "2026-11-22", "contacts": [{"name": "Tom Reid", "title": "Creative Producer", "email": "tom.reid@bramblekids.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Ellie Bennett", "title": "Marketing Manager", "email": "ellie.bennett@bramblekids.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x28a", "date": "2026-10-11", "type": "Email", "text": "First outreach", "by": "Emily"}, {"id": "x28b", "date": "2026-11-02", "type": "LinkedIn", "text": "Sent portfolio", "by": "Kira"}]}, {"id": "b29", "name": "Puddle & Co", "sector": "Kidswear", "website": "", "stage": "Portfolio Sent", "priority": "High", "lastContact": "2026-11-04", "nextFollowUp": "2026-11-19", "contacts": [{"name": "Olivia Moreno", "title": "Studio Manager", "email": "olivia.moreno@puddleandco.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x29a", "date": "2026-08-24", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x29b", "date": "2026-11-04", "type": "Call", "text": "Follow-up sent", "by": "Jayne"}]}, {"id": "b30", "name": "Hearth & Loom", "sector": "Interiors", "website": "", "stage": "Prospect", "priority": "Low", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Grace Nash", "title": "Founder", "email": "grace.nash@hearthandloom.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b31", "name": "Stonefold Home", "sector": "Interiors", "website": "", "stage": "Prospect", "priority": "Medium", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Grace Nash", "title": "Marketing Manager", "email": "grace.nash@stonefoldhome.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Freya Okafor", "title": "Ecommerce Manager", "email": "freya.okafor@stonefoldhome.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Sophie Okafor", "title": "Ecommerce Manager", "email": "sophie.okafor@stonefoldhome.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b32", "name": "Linden Living", "sector": "Interiors", "website": "", "stage": "Portfolio Sent", "priority": "Low", "lastContact": "2026-10-26", "nextFollowUp": "2026-11-25", "contacts": [{"name": "Jess Reid", "title": "Creative Producer", "email": "jess.reid@lindenliving.example", "phone": "", "linkedin": "", "flag": ""}, {"name": "Leah Reid", "title": "Creative Producer", "email": "leah.reid@lindenliving.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x32a", "date": "2026-09-04", "type": "Email", "text": "First outreach", "by": "Kevin"}, {"id": "x32b", "date": "2026-10-26", "type": "Call", "text": "Follow-up sent", "by": "Kevin"}]}, {"id": "b33", "name": "Fizz Theory", "sector": "Other", "website": "", "stage": "Prospect", "priority": "Low", "lastContact": null, "nextFollowUp": null, "contacts": [{"name": "Leah Hart", "title": "Creative Producer", "email": "leah.hart@fizztheory.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": []}, {"id": "b34", "name": "Good Dog Co", "sector": "Other", "website": "", "stage": "Contacted", "priority": "Low", "lastContact": "2026-11-14", "nextFollowUp": "2026-11-16", "contacts": [{"name": "Leah Hart", "title": "Ecommerce Manager", "email": "leah.hart@gooddogco.example", "phone": "", "linkedin": "", "flag": ""}], "notes": "", "budget": "", "opportunity": "", "shootType": "", "campaignType": "", "log": [{"id": "x34a", "date": "2026-09-25", "type": "Email", "text": "First outreach", "by": "Kate"}, {"id": "x34b", "date": "2026-11-14", "type": "Email", "text": "Sent portfolio", "by": "Jayne"}]}], "signals": [{"id": "s0", "title": "Halden Run appoints new Head of Brand ahead of 2027 relaunch - Running Insider", "link": "https://example.com/news", "source": "Running Insider", "published": "2026-11-16T08:00:00Z", "type": "Appointment", "score": 9, "sector": "Sportswear", "brandId": "b0", "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}, {"id": "s1", "title": "Skincare brand Moss & Mineral raises \u00a36m to expand UK retail - Beauty Daily", "link": "https://example.com/news", "source": "Beauty Daily", "published": "2026-11-15T08:00:00Z", "type": "Funding", "score": 8, "sector": "Beauty", "brandId": null, "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}, {"id": "s2", "title": "Marlowe Studio unveils new identity and website - Fashion Weekly", "link": "https://example.com/news", "source": "Fashion Weekly", "published": "2026-11-14T08:00:00Z", "type": "Rebrand", "score": 8, "sector": "Womens Fashion", "brandId": "b12", "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}, {"id": "s3", "title": "Copenhagen label Haldis opens first London flagship - Retail Journal", "link": "https://example.com/news", "source": "Retail Journal", "published": "2026-11-13T08:00:00Z", "type": "Expansion", "score": 6, "sector": "Womens Fashion", "brandId": null, "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}, {"id": "s4", "title": "Activewear brand Tempo Collective names new ecommerce director - Sport Retail", "link": "https://example.com/news", "source": "Sport Retail", "published": "2026-11-16T08:00:00Z", "type": "Appointment", "score": 7, "sector": "Sportswear", "brandId": null, "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}, {"id": "s5", "title": "Jewellery brand Ember & Gold launches lab-grown collection - Jewellery Today", "link": "https://example.com/news", "source": "Jewellery Today", "published": "2026-11-15T08:00:00Z", "type": "Launch", "score": 6, "sector": "Jewellery", "brandId": "b25", "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}, {"id": "s6", "title": "Homeware retailer begins creative account review - Marketing News", "link": "https://example.com/news", "source": "Marketing News", "published": "2026-11-14T08:00:00Z", "type": "Agency", "score": 7, "sector": "Interiors", "brandId": null, "status": "new", "createdAt": "2026-11-17T07:00:00.000Z"}]};</script>
+
+<script type="module">
+// ===================================================================
+//  Seventy7 New Business
+//  Firestore + Google sign-in. Config is read from Firebase Hosting's
+//  reserved /__/firebase/init.json, so nothing needs pasting in.
+// ===================================================================
+// Paste the web app config from Firebase console > Project settings > Your apps.
+// Leave as null to run the preview with sample data (or on Firebase Hosting, where it is read automatically).
+const FIREBASE_CONFIG = null;
+const STUDIO_REPORTING_URL = 'https://kevinteixeiras7.github.io/Studio-Reporting/';
+const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const ADMINS = ['kevin.teixeira@seventy7group.com'];   // must match firestore.rules
+const DOMAIN = 'seventy7group.com';
+
+const STAGES = ['Prospect','Contacted','Portfolio Sent','Meeting','Proposal','Won','Lost','Paused'];
+const BOARD = ['Prospect','Contacted','Portfolio Sent','Meeting','Proposal','Won','Lost'];
+const ACTIVE = ['Contacted','Portfolio Sent','Meeting','Proposal'];
+const CADENCE = {'Contacted':7,'Portfolio Sent':10,'Meeting':3,'Proposal':7};
+const SECTORS = ['Womens Fashion','Mens Fashion','Beauty','Sportswear','Accessories','Jewellery','Kidswear','Interiors','Other'];
+const PRIORITIES = ['High','Medium','Low'];
+const TOUCH_TYPES = ['Email','Call','LinkedIn','Meeting','Note'];
+
+// ---------- helpers ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => iso(new Date());
+const parseD = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate()+n); return iso(d); };
+const addWorkdays = (s, n) => { const d = parseD(s); while (n > 0) { d.setDate(d.getDate()+1); if (d.getDay() % 6) n--; } return iso(d); };
+const daysBetween = (a, b) => Math.round((parseD(b) - parseD(a)) / 864e5);
+const fmtD = s => s ? parseD(s).toLocaleDateString('en-GB', {day:'numeric', month:'short'}) : '';
+const firstName = n => (n || '').trim().split(/\s+/)[0] || '';
+const uid = () => Math.random().toString(36).slice(2, 10);
+const slug = s => s.toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+function dueLabel(s){
+  if (!s) return '<span class="due muted">No follow-up</span>';
+  const n = daysBetween(today(), s);
+  if (n < 0) return `<span class="due over">${-n}d overdue</span>`;
+  if (n === 0) return '<span class="due today">Today</span>';
+  if (n === 1) return '<span class="due">Tomorrow</span>';
+  return `<span class="due muted">${fmtD(s)}</span>`;
+}
+const stageChip = s => `<span class="chip ${s==='Won'?'ok':s==='Lost'?'hot':s==='Proposal'||s==='Meeting'?'blue':''}">${esc(s)}</span>`;
+const prioChip = p => p==='High' ? '<span class="chip dark">High</span>' : p==='Low' ? '<span class="chip">Low</span>' : '';
+const nextForStage = (stage, from = today()) => CADENCE[stage] ? addDays(from, CADENCE[stage]) : null;
+
+function toast(msg){
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+
+// ---------- state ----------
+const S = {
+  user:null, isAdmin:false, brands:[], signals:[], view:'today', open:null, editingContact:null,
+  f:{ sector:'', stage:'', prio:'', q:'', sort:'nextFollowUp', dir:1, showPaused:false, sigType:'', sigStatus:'new' },
+  radar:null, scanning:false
+};
+const byId = id => S.brands.find(b => b.id === id);
+
+// ===================================================================
+//  Store: Firebase in production, in-memory demo on localhost?demo=1
+// ===================================================================
+let store;
+
+async function firebaseStore(){
+  const [{initializeApp}, A, F, Fn] = await Promise.all([
+    import(FB+'firebase-app.js'), import(FB+'firebase-auth.js'),
+    import(FB+'firebase-firestore.js'), import(FB+'firebase-functions.js')
+  ]);
+  const cfg = FIREBASE_CONFIG || await (await fetch('/__/firebase/init.json')).json();
+  const app = initializeApp(cfg);
+  const auth = A.getAuth(app);
+  const db = F.getFirestore(app);
+  const fns = Fn.getFunctions(app, 'europe-west2');
+  const now = () => new Date().toISOString();
+  let unsubs = [];
+
+  return {
+    onAuth(cb){ A.onAuthStateChanged(auth, cb); },
+    async signIn(){
+      const p = new A.GoogleAuthProvider(); p.setCustomParameters({hd: DOMAIN, prompt:'select_account'});
+      await A.signInWithPopup(auth, p);
+    },
+    signOut(){ unsubs.forEach(u => u()); unsubs = []; return A.signOut(auth); },
+    listen(onBrands, onSignals, onErr){
+      unsubs.push(F.onSnapshot(F.collection(db,'brands'), snap => onBrands(snap.docs.map(d => ({id:d.id, ...d.data()}))), onErr));
+      unsubs.push(F.onSnapshot(F.query(F.collection(db,'signals'), F.orderBy('createdAt','desc'), F.limit(400)),
+        snap => onSignals(snap.docs.map(d => ({id:d.id, ...d.data()}))), onErr));
+    },
+    async update(id, patch, entry){
+      const data = {...patch, updatedAt: now()};
+      if (entry) data.log = F.arrayUnion(entry);
+      await F.updateDoc(F.doc(db,'brands',id), data);
+    },
+    async create(b){
+      const ref = F.doc(db,'brands', b.id);
+      const ex = await F.getDoc(ref);
+      if (ex.exists()) b.id = b.id + '-' + uid().slice(0,4);
+      await F.setDoc(F.doc(db,'brands',b.id), {...b, createdAt: now(), updatedAt: now()});
+      return b.id;
+    },
+    remove(id){ return F.deleteDoc(F.doc(db,'brands',id)); },
+    updateSignal(id, patch){ return F.updateDoc(F.doc(db,'signals',id), patch); },
+    async importBrands(list, overwrite){
+      const existing = new Set(S.brands.map(b => b.id));
+      let written = 0, skipped = 0, batch = F.writeBatch(db), n = 0;
+      for (const b of list){
+        if (existing.has(b.id) && !overwrite){ skipped++; continue; }
+        const {id, ...rest} = b;
+        batch.set(F.doc(db,'brands',id), {...rest, createdAt: now(), updatedAt: now()});
+        written++; n++;
+        if (n === 400){ await batch.commit(); batch = F.writeBatch(db); n = 0; }
+      }
+      if (n) await batch.commit();
+      return {written, skipped};
+    },
+    async getRadar(){ const d = await F.getDoc(F.doc(db,'settings','radar')); return d.exists() ? d.data() : null; },
+    saveRadar(data){ return F.setDoc(F.doc(db,'settings','radar'), {queries: data.queries, updatedAt: now()}, {merge:true}); },
+    async runScan(){ const r = await Fn.httpsCallable(fns,'runScanNow',{timeout:300000})(); return r.data; }
+  };
+}
+
+async function demoStore(){
+  const seed = JSON.parse(JSON.stringify(window.__SAMPLE));
+  const shift = daysBetween('2026-11-17', today());
+  const sh = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? addDays(v, shift) : v;
+  seed.brands.forEach(b => { b.lastContact = sh(b.lastContact); b.nextFollowUp = sh(b.nextFollowUp); (b.log||[]).forEach(l => l.date = sh(l.date)); });
+  seed.signals.forEach(x => { x.published = addDays(x.published.slice(0,10), shift) + 'T08:00:00Z'; x.createdAt = new Date().toISOString(); });
+  let brands = seed.brands.map(b => ({...b}));
+  let signals = (seed.signals || []).map(s => ({...s}));
+  let ob, os;
+  const emit = () => { ob && ob(brands.map(b => ({...b}))); os && os(signals.map(s => ({...s}))); };
+  return {
+    onAuth(cb){ setTimeout(() => cb({displayName:'Kevin Teixeira', email:'kevin.teixeira@seventy7group.com'}), 0); },
+    signIn(){}, signOut(){ location.reload(); },
+    listen(a, b){ ob = a; os = b; emit(); },
+    async update(id, patch, entry){ brands = brands.map(b => b.id === id ? {...b, ...patch, log: entry ? [...(b.log||[]), entry] : b.log} : b); emit(); },
+    async create(b){ if (brands.some(x => x.id === b.id)) b.id += '-' + uid().slice(0,4); brands.push(b); emit(); return b.id; },
+    async remove(id){ brands = brands.filter(b => b.id !== id); emit(); },
+    async updateSignal(id, patch){ signals = signals.map(s => s.id === id ? {...s, ...patch} : s); emit(); },
+    async importBrands(list){ return {written:0, skipped:list.length}; },
+    async getRadar(){ return null; }, async saveRadar(){},
+    async runScan(){ await new Promise(r => setTimeout(r, 900)); return {added:0, scanned:0}; }
+  };
+}
+
+// ===================================================================
+//  Actions
+// ===================================================================
+const me = () => firstName(S.user?.displayName) || S.user?.email?.split('@')[0] || 'Someone';
+const entry = (type, text, date = today()) => ({id: uid(), date, type, text, by: me(), at: new Date().toISOString()});
+
+async function setStage(id, stage){
+  const b = byId(id); if (!b || b.stage === stage) return;
+  const patch = {stage, nextFollowUp: nextForStage(stage)};
+  await store.update(id, patch, entry('Stage', `${b.stage} → ${stage}`));
+  toast(`${b.name} moved to ${stage}`);
+}
+
+async function logTouch(id, type, text, nextDate){
+  const b = byId(id); if (!b) return;
+  const patch = {};
+  if (type !== 'Note'){
+    patch.lastContact = today();
+    let stage = b.stage;
+    if (stage === 'Prospect'){ stage = 'Contacted'; patch.stage = stage; }
+    patch.nextFollowUp = nextDate || nextForStage(stage) || null;
+  } else if (nextDate) patch.nextFollowUp = nextDate;
+  await store.update(id, patch, entry(type, text || `${type} logged`));
+  toast('Logged');
+}
+
+async function quickChased(id){
+  const b = byId(id);
+  await logTouch(id, 'Email', 'Follow-up sent');
+}
+async function snooze(id, days){
+  const b = byId(id);
+  const d = days === 7 ? addDays(today(), 7) : addWorkdays(today(), days);
+  await store.update(id, {nextFollowUp: d}, entry('Snooze', `Follow-up moved to ${fmtD(d)}`));
+  toast(`Snoozed to ${fmtD(d)}`);
+}
+
+// email templates
+function emailFor(b, c){
+  const n = firstName(c?.name) || 'there';
+  const sig = `\n\nBest,\n${S.user?.displayName || ''}\nSeventy7`;
+  const t = {
+    'Prospect': [`Seventy7 x ${b.name}`, `Hi ${n},\n\nI'm reaching out from Seventy7, a London creative production studio covering ecommerce photography, campaign, video and full creative production.\n\nWe'd love to show you some recent work that feels close to ${b.name}'s world. Would you be open to a quick chat or a look at our deck?`],
+    'Contacted': [`Following up: Seventy7 x ${b.name}`, `Hi ${n},\n\nJust floating this back to the top of your inbox. If you have any shoots coming up, ecommerce or campaign, we'd love to help. Happy to send over our deck or pop in for a coffee.`],
+    'Portfolio Sent': [`Any upcoming shoots at ${b.name}?`, `Hi ${n},\n\nHope you had a chance to look through our portfolio. Are there any upcoming launches or seasonal shoots we could quote on? Even a small test shoot is a great way to see how we work.`],
+    'Meeting': [`Great to meet: next steps`, `Hi ${n},\n\nThanks again for your time. As discussed, I'll pull together some thoughts and an estimate. Let me know if there's anything else you'd like us to include.`],
+    'Proposal': [`Checking in on our proposal`, `Hi ${n},\n\nJust checking in on the proposal we sent over. Happy to talk it through, adjust scope, or answer any questions.`],
+  }[b.stage] || [`Seventy7 x ${b.name}`, `Hi ${n},\n\n`];
+  return {subject: t[0], body: t[1] + sig};
+}
+function mailto(b, c){
+  const e = emailFor(b, c);
+  return `mailto:${encodeURIComponent(c?.email || '')}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`;
+}
+
+// ===================================================================
+//  Render
+// ===================================================================
+function render(){
+  if (!S.user){ return renderLogin(); }
+  const dueCount = S.brands.filter(b => b.nextFollowUp && b.nextFollowUp <= today() && !['Won','Lost','Paused'].includes(b.stage)).length;
+  const newSig = S.signals.filter(s => s.status === 'new').length;
+  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['radar','Radar',newSig],['dashboard','Dashboard']];
+  if (S.isAdmin) navs.push(['admin','Admin']);
+  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
+  $('#root').innerHTML = `
+  <div class="app">
+    <aside class="side">
+      <div class="logo">Seventy7<small>New Business</small></div>
+      <nav class="nav">${navs.map(([k,l,c]) => `<button data-nav="${k}" class="${S.view===k?'on':''}">${l}${c?`<span class="count">${c}</span>`:''}</button>`).join('')}</nav>
+      <a class="xlink" href="${STUDIO_REPORTING_URL}" target="_blank" rel="noopener">Studio Reporting ↗</a>
+      <div class="me"><b>${esc(S.user.displayName || '')}</b>${esc(S.user.email)}<br><button data-act="signout">Sign out</button></div>
+    </aside>
+    <main class="main">
+      <div class="top">
+        <h1>${titles[S.view]}</h1>
+        <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="gsearch" placeholder="Find a brand or contact" autocomplete="off"><div id="gres" class="results hidden"></div></div>
+        <button class="btn dark" data-act="new-brand">+ Add brand</button>
+      </div>
+      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
+    </main>
+  </div>`;
+  if (S.view === 'pipeline') wireBoard();
+  renderDrawer();
+}
+
+function greeting(){
+  const h = new Date().getHours();
+  return `${h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'}, ${esc(me())}`;
+}
+
+function renderLogin(err){
+  $('#root').innerHTML = `<div class="login"><div class="box">
+    <h1>Seventy7</h1><p>New business pipeline and opportunity radar</p>
+    <button class="btn" data-act="signin">Sign in with Google</button>
+    ${err ? `<div class="err">${esc(err)}</div>` : ''}
+  </div></div>`;
+}
+
+// ---------- Today ----------
+function brandRow(b, opts = {}){
+  const c = (b.contacts || [])[0];
+  return `<div class="row">
+    <div class="who" data-open="${b.id}"><b>${esc(b.name)}</b>
+      <span>${esc(b.stage)} · ${esc(b.sector)}${c ? ' · ' + esc(c.name) : ''}${b.lastContact ? ` · last contact ${fmtD(b.lastContact)}` : ''}</span></div>
+    ${opts.due !== false ? dueLabel(b.nextFollowUp) : prioChip(b.priority)}
+    <div class="acts">
+      ${opts.quick ? `<button class="btn sm" data-chased="${b.id}" title="Log a follow-up email and set the next date">Chased</button>
+      <button class="btn sm ghost" data-snooze="${b.id}" data-days="2" title="Snooze 2 working days">+2d</button>
+      <button class="btn sm ghost" data-snooze="${b.id}" data-days="7" title="Snooze a week">+1w</button>` : ''}
+      ${opts.email && c?.email ? `<a class="btn sm" href="${mailto(b,c)}" data-mailed="${b.id}">Email</a>` : ''}
+    </div>
+  </div>`;
+}
+
+function vToday(){
+  const t = today(), wk = addDays(t, 7);
+  const live = S.brands.filter(b => !['Won','Lost','Paused'].includes(b.stage));
+  const due = live.filter(b => b.nextFollowUp && b.nextFollowUp <= t).sort((a,b) => a.nextFollowUp.localeCompare(b.nextFollowUp) || STAGES.indexOf(b.stage) - STAGES.indexOf(a.stage));
+  const overdue = due.filter(b => b.nextFollowUp < t);
+  const soon = live.filter(b => b.nextFollowUp && b.nextFollowUp > t && b.nextFollowUp <= wk).sort((a,b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
+  const pr = {High:0, Medium:1, Low:2};
+  const ready = S.brands.filter(b => b.stage === 'Prospect' && (b.contacts||[]).some(c => c.email))
+    .sort((a,b) => (pr[a.priority]??1) - (pr[b.priority]??1) || a.name.localeCompare(b.name)).slice(0, 6);
+  const needsContact = S.brands.filter(b => b.stage === 'Prospect' && !(b.contacts||[]).some(c => c.email)).length;
+  const sigs = S.signals.filter(s => s.status === 'new').sort((a,b) => b.score - a.score).slice(0, 5);
+  const meetings = S.brands.filter(b => b.stage === 'Meeting').length, props = S.brands.filter(b => b.stage === 'Proposal').length;
+
+  return `
+  <div class="stats">
+    <div class="card stat ${due.length?'hot':''}"><div class="n">${due.length}</div><div class="t">Follow-ups due${overdue.length ? `, ${overdue.length} overdue` : ''}</div></div>
+    <div class="card stat"><div class="n">${soon.length}</div><div class="t">Coming up this week</div></div>
+    <div class="card stat"><div class="n">${meetings}</div><div class="t">Meetings in play</div></div>
+    <div class="card stat"><div class="n">${props}</div><div class="t">Proposals out</div></div>
+  </div>
+  <div class="today">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <div class="panel-h"><h3>Chase today</h3><span class="small muted">Chased logs it and sets the next date</span></div>
+        ${due.length ? due.map(b => brandRow(b, {quick:true})).join('') : '<div class="empty">Nothing due. Nice.</div>'}
+      </div>
+      <div class="card">
+        <div class="panel-h"><h3>This week</h3></div>
+        ${soon.length ? soon.map(b => brandRow(b, {email:true})).join('') : '<div class="empty">Nothing scheduled this week.</div>'}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <div class="panel-h"><h3>Fresh on the radar</h3><button class="btn sm ghost" data-nav="radar">See all</button></div>
+        ${sigs.length ? sigs.map(s => sigRow(s, true)).join('') : '<div class="empty">No new signals. The radar scans every morning at 7am.</div>'}
+      </div>
+      <div class="card">
+        <div class="panel-h"><h3>Ready to contact</h3><span class="small muted">${needsContact} more need a contact</span></div>
+        ${ready.length ? ready.map(b => brandRow(b, {due:false, email:true})).join('') : '<div class="empty">No prospects with an email yet.</div>'}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- Pipeline ----------
+function filtered(){
+  const f = S.f, q = f.q.toLowerCase();
+  return S.brands.filter(b =>
+    (!f.sector || b.sector === f.sector) && (!f.prio || b.priority === f.prio) && (!f.stage || b.stage === f.stage) &&
+    (!q || b.name.toLowerCase().includes(q) || (b.contacts||[]).some(c => (c.name+' '+c.email+' '+c.title).toLowerCase().includes(q))));
+}
+function filterBar(withStage){
+  const f = S.f;
+  return `<div class="filters">
+    <input id="fq" placeholder="Filter…" value="${esc(f.q)}" style="width:200px">
+    <select data-f="sector"><option value="">All sectors</option>${SECTORS.map(s => `<option ${f.sector===s?'selected':''}>${s}</option>`).join('')}</select>
+    ${withStage ? `<select data-f="stage"><option value="">All stages</option>${STAGES.map(s => `<option ${f.stage===s?'selected':''}>${s}</option>`).join('')}</select>` : ''}
+    <select data-f="prio"><option value="">Any priority</option>${PRIORITIES.map(s => `<option ${f.prio===s?'selected':''}>${s}</option>`).join('')}</select>
+    ${(f.q||f.sector||f.stage||f.prio) ? '<button class="btn sm ghost" data-act="clear-f">Clear</button>' : ''}
+  </div>`;
+}
+function vPipeline(){
+  const list = filtered();
+  const cols = S.f.showPaused ? [...BOARD, 'Paused'] : BOARD;
+  return filterBar(false) + `
+  <div class="small muted" style="margin:-6px 0 12px">Drag a card to change its stage. The next follow-up date updates automatically. <label style="margin-left:10px"><input type="checkbox" data-act="toggle-paused" ${S.f.showPaused?'checked':''}> Show paused</label></div>
+  <div class="board">${cols.map(st => {
+    const items = list.filter(b => b.stage === st).sort((a,b) => (a.nextFollowUp||'9').localeCompare(b.nextFollowUp||'9') || a.name.localeCompare(b.name));
+    const cap = st === 'Prospect' ? 60 : 200;
+    return `<div class="col" data-col="${st}">
+      <div class="col-h">${st}<span>${items.length}</span></div>
+      ${items.slice(0, cap).map(b => `<div class="bc" draggable="true" data-card="${b.id}">
+        <b>${esc(b.name)}</b>
+        <div class="meta"><span class="chip">${esc(b.sector)}</span>${['Won','Lost','Paused','Prospect'].includes(st) ? prioChip(b.priority) : dueLabel(b.nextFollowUp)}</div>
+      </div>`).join('')}
+      ${items.length > cap ? `<div class="more">+${items.length - cap} more, use Brands view</div>` : ''}
+    </div>`;}).join('')}</div>`;
+}
+function wireBoard(){
+  document.querySelectorAll('.bc').forEach(el => {
+    el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', el.dataset.card); el.classList.add('dragging'); });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    el.addEventListener('click', () => openBrand(el.dataset.card));
+  });
+  document.querySelectorAll('.col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag'));
+    col.addEventListener('drop', e => { e.preventDefault(); col.classList.remove('drag'); setStage(e.dataTransfer.getData('text/plain'), col.dataset.col); });
+  });
+}
+
+// ---------- Brands ----------
+function vBrands(){
+  const f = S.f, list = filtered();
+  const key = f.sort, dir = f.dir;
+  const val = b => key === 'contacts' ? (b.contacts||[]).length : key === 'stage' ? STAGES.indexOf(b.stage) : key === 'priority' ? PRIORITIES.indexOf(b.priority) : (b[key] || (key.includes('Contact')||key.includes('Follow') ? '9999' : ''));
+  list.sort((a,b) => { const x = val(a), y = val(b); return (x > y ? 1 : x < y ? -1 : 0) * dir || a.name.localeCompare(b.name); });
+  const th = (k, l) => `<th data-sort="${k}">${l}${f.sort===k ? (dir>0?' ↑':' ↓') : ''}</th>`;
+  return filterBar(true) + `<div class="card" style="overflow:auto">
+    <table class="t"><thead><tr>${th('name','Brand')}${th('sector','Sector')}${th('stage','Stage')}${th('priority','Priority')}${th('contacts','Contacts')}${th('lastContact','Last contact')}${th('nextFollowUp','Next follow-up')}</tr></thead>
+    <tbody>${list.map(b => {
+      const flags = (b.contacts||[]).filter(c => c.flag).length;
+      return `<tr class="click" data-open="${b.id}">
+      <td><b>${esc(b.name)}</b></td><td>${esc(b.sector)}</td><td>${stageChip(b.stage)}</td><td>${prioChip(b.priority) || '<span class="muted small">Medium</span>'}</td>
+      <td>${(b.contacts||[]).length || '<span class="chip warn">None</span>'} ${flags ? `<span class="chip warn" title="Contact details to check">${flags} to check</span>` : ''}</td>
+      <td class="small">${b.lastContact ? fmtD(b.lastContact) : '<span class="muted">Never</span>'}</td>
+      <td>${['Won','Lost','Paused'].includes(b.stage) ? '' : dueLabel(b.nextFollowUp)}</td></tr>`;}).join('')}</tbody></table>
+    ${list.length ? '' : '<div class="empty">No brands match.</div>'}
+  </div><div class="small muted" style="margin-top:10px">${list.length} brands</div>`;
+}
+
+// ---------- Radar ----------
+const TYPE_CLASS = {Appointment:'hot', Agency:'hot', Rebrand:'blue', Funding:'ok', Launch:'blue', Expansion:'ok'};
+function sigRow(s, compact){
+  const sc = s.score >= 7 ? 's-hi' : s.score >= 5 ? 's-mid' : '';
+  const linked = s.brandId && byId(s.brandId);
+  return `<div class="sig">
+    <div class="score ${sc}" title="Relevance score">${s.score}</div>
+    <div class="body">
+      <a href="${esc(s.link)}" target="_blank" rel="noopener">${esc(s.title)}</a>
+      <div class="line">
+        <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>
+        ${linked ? `<span class="chip dark" data-open="${s.brandId}" style="cursor:pointer">In pipeline: ${esc(linked.name)} (${esc(linked.stage)})</span>` : ''}
+        ${s.sector ? `<span class="chip">${esc(s.sector)}</span>` : ''}
+        <span class="small muted">${esc(s.source || '')}${s.published ? ' · ' + fmtD(s.published.slice(0,10)) : ''}</span>
+      </div>
+      ${!compact && s.status !== 'new' ? `<div class="small muted" style="margin-top:6px">${s.status === 'added' ? 'Added to pipeline' : 'Dismissed'}${s.handledBy ? ' by ' + esc(s.handledBy) : ''}</div>` : ''}
+    </div>
+    ${s.status === 'new' ? `<div class="acts" style="display:flex;flex-direction:column;gap:6px">
+      <button class="btn sm dark" data-sig-add="${s.id}">${linked ? 'Log & chase' : 'Add to pipeline'}</button>
+      <button class="btn sm ghost" data-sig-dismiss="${s.id}">Dismiss</button></div>` : ''}
+  </div>`;
+}
+function vRadar(){
+  const f = S.f;
+  const types = [...new Set(S.signals.map(s => s.type))].sort();
+  const list = S.signals.filter(s => (!f.sigStatus || s.status === f.sigStatus) && (!f.sigType || s.type === f.sigType) && (!f.sector || s.sector === f.sector))
+    .sort((a,b) => b.score - a.score || (b.published||'').localeCompare(a.published||''));
+  const last = S.signals.reduce((m, s) => s.createdAt > m ? s.createdAt : m, '');
+  return `<div class="filters">
+    <select data-f="sigStatus"><option value="new" ${f.sigStatus==='new'?'selected':''}>New</option><option value="added" ${f.sigStatus==='added'?'selected':''}>Added</option><option value="dismissed" ${f.sigStatus==='dismissed'?'selected':''}>Dismissed</option><option value="" ${!f.sigStatus?'selected':''}>All</option></select>
+    <select data-f="sigType"><option value="">All signal types</option>${types.map(t => `<option ${f.sigType===t?'selected':''}>${t}</option>`).join('')}</select>
+    <select data-f="sector"><option value="">All sectors</option>${SECTORS.map(s => `<option ${f.sector===s?'selected':''}>${s}</option>`).join('')}</select>
+    <span style="flex:1"></span>
+    <span class="small muted">${last ? 'Last scan ' + new Date(last).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Not scanned yet'}</span>
+    <button class="btn" data-act="scan" ${S.scanning?'disabled':''}>${S.scanning ? 'Scanning…' : 'Scan now'}</button>
+  </div>
+  <div class="small muted" style="margin:-6px 0 12px">Scans UK fashion, beauty, sport and retail news every morning for new marketing and ecommerce hires, rebrands, launches, funding, store openings and agency reviews. Higher scores are stronger reasons to get in touch.</div>
+  <div class="card">${list.length ? list.map(s => sigRow(s)).join('') : '<div class="empty">Nothing here yet.</div>'}</div>`;
+}
+
+function guessBrand(title){
+  let t = title.replace(/\s+[-–|]\s+[^-–|]+$/, '');            // drop " - Source"
+  t = t.split(/\s+(appoints?|appointed|names?|hires?|raises?|launch(es)?|opens?|unveils?|secures?|rebrands?|relaunch(es)?|expands?|enters|debuts?|announces?|taps|signs|partners|is|has|to)\b/i)[0];
+  t = t.replace(/^.*?\b(brand|label|retailer|start-?up|company|maker|chain|designer)\s+/i, '');
+  t = t.replace(/['’]s$/, '').trim();
+  if (/^(\w+\s)?(brand|label|retailer|start-?up|company|chain)$/i.test(t)) return '';
+  return t.split(/\s+/).length <= 5 ? t : '';
+}
+
+async function sigAdd(id){
+  const s = S.signals.find(x => x.id === id); if (!s) return;
+  if (s.brandId && byId(s.brandId)){
+    const b = byId(s.brandId);
+    await store.update(b.id, {nextFollowUp: today(), priority: b.priority === 'Low' ? 'Medium' : b.priority}, entry('Signal', `${s.type}: ${s.title}`));
+    await store.updateSignal(id, {status:'added', handledBy: me(), handledAt: new Date().toISOString()});
+    openBrand(b.id); toast('Added to today\'s chase list');
+    return;
+  }
+  const guess = s.brandGuess || guessBrand(s.title);
+  modal(`<h3>Add to pipeline</h3>
+    <label class="l">Brand name</label><input class="f" id="m-name" value="${esc(guess)}">
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="l">Sector</label><select class="f" id="m-sector">${SECTORS.map(x => `<option ${x===(s.sector||'Other')?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div><label class="l">Priority</label><select class="f" id="m-prio">${PRIORITIES.map(x => `<option ${x==='Medium'?'selected':''}>${x}</option>`).join('')}</select></div>
+    </div>`, async () => {
+      const name = $('#m-name').value.trim(); if (!name) return false;
+      const existing = S.brands.find(b => b.name.toLowerCase() === name.toLowerCase());
+      let bid;
+      if (existing){ bid = existing.id; await store.update(bid, {nextFollowUp: today()}, entry('Signal', `${s.type}: ${s.title}`)); }
+      else bid = await store.create(newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, nextFollowUp: today(),
+        notes: `Found via radar: ${s.title}\n${s.link}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}));
+      await store.updateSignal(id, {status:'added', brandId: bid, handledBy: me(), handledAt: new Date().toISOString()});
+      toast(`${name} added`); setTimeout(() => openBrand(bid), 200);
+    }, 'Add');
+}
+
+// ---------- Dashboard ----------
+function vDash(){
+  const B = S.brands;
+  const cnt = st => B.filter(b => b.stage === st).length;
+  const reached = B.filter(b => b.stage !== 'Prospect').length;
+  const funnel = [['Brands tracked', B.length], ['Contacted', reached], ['Portfolio sent', B.filter(b => ['Portfolio Sent','Meeting','Proposal','Won'].includes(b.stage)).length],
+    ['Meeting', B.filter(b => ['Meeting','Proposal','Won'].includes(b.stage)).length], ['Proposal', B.filter(b => ['Proposal','Won'].includes(b.stage)).length], ['Won', cnt('Won')]];
+  const max = Math.max(1, B.length);
+  const since = addDays(today(), -30);
+  const touches = {};
+  B.forEach(b => (b.log||[]).forEach(l => { if (l.by && l.by !== 'Imported' && l.date >= since && !['Snooze','Stage'].includes(l.type)) touches[l.by] = (touches[l.by]||0) + 1; }));
+  const tmax = Math.max(1, ...Object.values(touches));
+  const live = B.filter(b => ACTIVE.includes(b.stage));
+  const withDate = live.filter(b => b.nextFollowUp).length, over = live.filter(b => b.nextFollowUp && b.nextFollowUp < today()).length;
+  const noContact = B.filter(b => !(b.contacts||[]).some(c => c.email)).length;
+  const flags = B.reduce((n, b) => n + (b.contacts||[]).filter(c => c.flag).length, 0);
+  const sigAdded = S.signals.filter(s => s.status === 'added').length;
+
+  return `<div class="dash">
+    <div class="card"><div class="panel-h"><h3>Funnel</h3></div><div class="funnel" style="padding:8px 0">
+      ${funnel.map(([l,n]) => `<div class="fr"><span>${l}</span><div class="bar"><i style="width:${n/max*100}%"></i></div><b>${n}</b></div>`).join('')}
+    </div></div>
+    <div class="card"><div class="panel-h"><h3>Pipeline health</h3></div><div style="padding:6px 16px 14px">
+      <div class="row" style="padding:10px 0"><span style="flex:1">Active deals with a follow-up date</span><b>${withDate}/${live.length}</b></div>
+      <div class="row" style="padding:10px 0"><span style="flex:1">Overdue follow-ups</span><b style="color:${over?'var(--hot)':'inherit'}">${over}</b></div>
+      <div class="row" style="padding:10px 0"><span style="flex:1">Brands with no email contact yet</span><b>${noContact}</b></div>
+      <div class="row" style="padding:10px 0"><span style="flex:1">Contact details flagged to check</span><b>${flags}</b></div>
+      <div class="row" style="padding:10px 0"><span style="flex:1">Radar signals added to pipeline</span><b>${sigAdded}</b></div>
+    </div></div>
+    <div class="card" style="grid-column:1/-1;overflow:auto"><div class="panel-h"><h3>By sector</h3></div>
+      <table class="t"><thead><tr><th>Sector</th>${['Brands',...BOARD,'Paused'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>
+      ${SECTORS.map(sec => { const L = B.filter(b => b.sector === sec); return L.length ? `<tr><td><b>${sec}</b></td><td>${L.length}</td>${[...BOARD,'Paused'].map(st => { const n = L.filter(b => b.stage === st).length; return `<td>${n || '<span class="muted">·</span>'}</td>`; }).join('')}</tr>` : ''; }).join('')}
+      </tbody></table></div>
+    <div class="card"><div class="panel-h"><h3>Touchpoints logged, last 30 days</h3></div><div class="funnel" style="padding:8px 0">
+      ${Object.keys(touches).length ? Object.entries(touches).sort((a,b) => b[1]-a[1]).map(([p,n]) => `<div class="fr"><span>${esc(p)}</span><div class="bar"><i style="width:${n/tmax*100}%"></i></div><b>${n}</b></div>`).join('') : '<div class="empty">Nothing logged in the app yet.</div>'}
+    </div></div>
+    <div class="card"><div class="panel-h"><h3>Biggest opportunities</h3></div>
+      ${B.filter(b => ['Meeting','Proposal'].includes(b.stage)).map(b => `<div class="row"><div class="who" data-open="${b.id}"><b>${esc(b.name)}</b><span>${esc([b.budget, b.opportunity, b.shootType].filter(Boolean).join(' · ') || b.sector)}</span></div>${stageChip(b.stage)}</div>`).join('') || '<div class="empty">No meetings or proposals yet.</div>'}
+    </div>
+  </div>`;
+}
+
+// ---------- Admin ----------
+function vAdmin(){
+  const r = S.radar || {};
+  return `<div style="display:grid;gap:18px;max-width:820px">
+    <div class="card"><div class="panel-h"><h3>Import tracker data</h3></div><div style="padding:16px">
+      <p class="small muted" style="margin-top:0">Load the cleaned <b>seed.json</b> made from the outreach tracker. Brands already in the app are skipped unless you tick overwrite.</p>
+      <input type="file" id="seedfile" accept=".json" class="f" style="margin-bottom:10px">
+      <label class="small"><input type="checkbox" id="seedover"> Overwrite brands that already exist</label>
+      <div style="margin-top:12px"><button class="btn dark" data-act="import">Import</button></div>
+    </div></div>
+    <div class="card"><div class="panel-h"><h3>Export</h3></div><div style="padding:16px">
+      <p class="small muted" style="margin-top:0">Download every brand and contact as a CSV (opens in Excel or Google Sheets).</p>
+      <button class="btn" data-act="export">Download CSV</button>
+    </div></div>
+    <div class="card"><div class="panel-h"><h3>Radar searches</h3></div><div style="padding:16px">
+      <p class="small muted" style="margin-top:0">One Google News search per line. Leave empty to use the built-in set. Brands in the pipeline are also checked on a rotation.</p>
+      <textarea class="f" id="radarq" rows="10" placeholder="e.g. appointed head of ecommerce fashion UK">${esc((r.queries||[]).join('\n'))}</textarea>
+      <div style="margin-top:12px"><button class="btn dark" data-act="save-radar">Save searches</button></div>
+    </div></div>
+    <div class="card"><div class="panel-h"><h3>Access</h3></div><div style="padding:16px" class="small">
+      Access is limited to six @${DOMAIN} accounts set in the database security rules (<code>firestore.rules</code>). To add or remove someone, edit the list there and redeploy.
+    </div></div>
+  </div>`;
+}
+
+// ===================================================================
+//  Brand drawer
+// ===================================================================
+function newBrand(p){
+  return {id: slug(p.name), name: p.name, sector: p.sector || 'Other', website: '', stage: 'Prospect', priority: p.priority || 'Medium',
+    lastContact: null, nextFollowUp: p.nextFollowUp || null, contacts: [], notes: p.notes || '', budget:'', opportunity:'', shootType:'', campaignType:'', log: p.log || []};
+}
+function openBrand(id){ S.open = id; S.editingContact = null; renderDrawer(); }
+function closeDrawer(){ S.open = null; renderDrawer(); }
+
+function renderDrawer(){
+  const L = $('#layer');
+  const b = S.open && byId(S.open);
+  if (!b){ L.innerHTML = ''; return; }
+  const keepScroll = L.querySelector('.dbody')?.scrollTop || 0;
+  const contacts = b.contacts || [];
+  const log = [...(b.log||[])].sort((x,y) => (y.at||y.date).localeCompare(x.at||x.date));
+  const ec = S.editingContact;
+  L.innerHTML = `<div class="scrim" data-act="close"></div>
+  <div class="drawer">
+    <div class="dh">
+      <div style="flex:1"><h2>${esc(b.name)}</h2>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">${stageChip(b.stage)}<span class="chip">${esc(b.sector)}</span>${prioChip(b.priority)}
+        ${b.website ? `<a class="chip" href="${esc(b.website)}" target="_blank" rel="noopener">Website ↗</a>` : ''}</div></div>
+      <button class="btn ghost" data-act="close">✕</button>
+    </div>
+    <div class="dbody">
+      <div class="sec"><h4>Stage</h4>
+        <div class="stagebar">${STAGES.map(s => `<button data-stage="${s}" class="${b.stage===s?'on':''}">${s}</button>`).join('')}</div>
+        <div class="grid2" style="margin-top:14px">
+          <div><label class="l">Next follow-up</label><input type="date" class="f" data-bf="nextFollowUp" value="${b.nextFollowUp||''}"></div>
+          <div><label class="l">Last contact</label><div style="padding:8px 0">${b.lastContact ? fmtD(b.lastContact) + ` <span class="muted small">(${daysBetween(b.lastContact, today())} days ago)</span>` : '<span class="muted">Never</span>'}</div></div>
+        </div>
+      </div>
+
+      <div class="sec"><h4>Log a touchpoint</h4>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="f" id="t-type" style="width:auto">${TOUCH_TYPES.map(t => `<option>${t}</option>`).join('')}</select>
+          <input class="f" id="t-text" placeholder="What happened? e.g. Sent SS27 deck, asked about Jan shoots" style="flex:1;min-width:220px">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <span class="small muted">Next follow-up</span><input type="date" class="f" id="t-next" style="width:auto" value="${nextForStage(b.stage === 'Prospect' ? 'Contacted' : b.stage) || ''}">
+          <span style="flex:1"></span><button class="btn dark" data-act="log">Log it</button>
+        </div>
+      </div>
+
+      <div class="sec"><h4 style="display:flex;justify-content:space-between">Contacts <button class="btn sm" data-act="add-contact">+ Add</button></h4>
+        ${contacts.map((c, i) => ec === i ? contactForm(c) : `<div class="contact">
+          <div class="ci"><b>${esc(c.name || 'Unnamed')}</b> <span class="muted small">${esc(c.title)}</span>
+            ${c.flag ? `<div><span class="chip warn">${esc(c.flag)}</span></div>` : ''}
+            <div class="small">${c.email ? `<a href="${mailto(b,c)}">${esc(c.email)}</a>` : '<span class="muted">No email</span>'}${c.phone ? ' · ' + esc(c.phone) : ''}${c.linkedin ? ` · <a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ''}</div></div>
+          <div style="display:flex;gap:4px">${c.email ? `<a class="btn sm" href="${mailto(b,c)}" title="Opens a ${esc(b.stage)} email in your mail app">Email</a>` : ''}<button class="btn sm ghost" data-edit-contact="${i}">Edit</button></div>
+        </div>`).join('')}
+        ${ec === 'new' ? contactForm({}) : ''}
+        ${!contacts.length && ec !== 'new' ? '<div class="muted small">No contacts yet. Find the Head of Ecommerce, Creative Producer or Brand Marketing lead on LinkedIn.</div>' : ''}
+      </div>
+
+      <div class="sec"><h4>Details</h4>
+        <div class="grid2">
+          <div><label class="l">Name</label><input class="f" data-bf="name" value="${esc(b.name)}"></div>
+          <div><label class="l">Website</label><input class="f" data-bf="website" value="${esc(b.website)}" placeholder="https://"></div>
+          <div><label class="l">Sector</label><select class="f" data-bf="sector">${SECTORS.map(s => `<option ${b.sector===s?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div><label class="l">Priority</label><select class="f" data-bf="priority">${PRIORITIES.map(s => `<option ${b.priority===s?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div><label class="l">Budget / volume</label><input class="f" data-bf="budget" value="${esc(b.budget)}" placeholder="e.g. 5 shoots a year"></div>
+          <div><label class="l">Opportunity</label><input class="f" data-bf="opportunity" value="${esc(b.opportunity)}" placeholder="e.g. Full service"></div>
+          <div><label class="l">Shoot type</label><input class="f" data-bf="shootType" value="${esc(b.shootType)}" placeholder="e.g. Model and ecomm"></div>
+          <div><label class="l">Campaign type</label><input class="f" data-bf="campaignType" value="${esc(b.campaignType)}"></div>
+        </div>
+        <div style="margin-top:12px"><label class="l">Notes</label><textarea class="f" data-bf="notes" rows="4">${esc(b.notes)}</textarea></div>
+      </div>
+
+      <div class="sec"><h4>History</h4>
+        ${log.length ? `<div class="log">${log.map(l => `<div><b class="small">${esc(l.type)}</b> <span class="small muted">${fmtD(l.date)} · ${esc(l.by||'')}</span><div>${esc(l.text)}</div></div>`).join('')}</div>` : '<div class="muted small">No history yet.</div>'}
+      </div>
+      <div style="text-align:right"><button class="btn sm ghost danger" data-act="delete-brand">Delete brand</button></div>
+    </div>
+  </div>`;
+  L.querySelector('.dbody').scrollTop = keepScroll;
+}
+
+function contactForm(c){
+  return `<div class="contact" style="display:block;background:#fbfaf8;margin:6px -8px;padding:12px 8px;border-radius:8px">
+    <div class="grid2">
+      <div><label class="l">Name</label><input class="f" id="c-name" value="${esc(c.name)}"></div>
+      <div><label class="l">Job title</label><input class="f" id="c-title" value="${esc(c.title)}"></div>
+      <div><label class="l">Email</label><input class="f" id="c-email" value="${esc(c.email)}"></div>
+      <div><label class="l">Phone</label><input class="f" id="c-phone" value="${esc(c.phone)}"></div>
+      <div style="grid-column:1/-1"><label class="l">LinkedIn</label><input class="f" id="c-linkedin" value="${esc(c.linkedin)}"></div>
+    </div>
+    ${c.flag ? `<label class="small" style="display:block;margin-top:8px"><input type="checkbox" id="c-clearflag"> Details checked, clear "${esc(c.flag)}"</label>` : ''}
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn sm dark" data-act="save-contact">Save</button><button class="btn sm" data-act="cancel-contact">Cancel</button>
+      <span style="flex:1"></span>${S.editingContact !== 'new' ? '<button class="btn sm ghost danger" data-act="del-contact">Remove</button>' : ''}
+    </div></div>`;
+}
+
+async function saveContact(){
+  const b = byId(S.open); const contacts = [...(b.contacts||[])];
+  const i = S.editingContact;
+  const prev = i === 'new' ? {} : contacts[i];
+  const email = $('#c-email').value.trim().toLowerCase();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('That email doesn\'t look right'); return; }
+  const c = {name: $('#c-name').value.trim(), title: $('#c-title').value.trim(), email, phone: $('#c-phone').value.trim(),
+    linkedin: $('#c-linkedin').value.trim(), flag: $('#c-clearflag')?.checked ? '' : (email !== prev.email ? '' : prev.flag || '')};
+  if (!c.name && !c.email){ toast('Add a name or email'); return; }
+  if (i === 'new') contacts.push(c); else contacts[i] = c;
+  S.editingContact = null;
+  await store.update(b.id, {contacts}, i === 'new' ? entry('Note', `Added contact ${c.name || c.email}`) : null);
+}
+
+// ===================================================================
+//  Modal
+// ===================================================================
+function modal(html, onOk, okLabel = 'Save'){
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="box">${html}<div class="acts"><button class="btn" data-m="x">Cancel</button><button class="btn dark" data-m="ok">${okLabel}</button></div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('input,select')?.focus();
+  m.addEventListener('click', async e => {
+    if (e.target === m || e.target.dataset.m === 'x') m.remove();
+    if (e.target.dataset.m === 'ok'){ e.target.disabled = true; const r = await onOk(); if (r === false) e.target.disabled = false; else m.remove(); }
+  });
+}
+
+// ===================================================================
+//  Events
+// ===================================================================
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-edit-contact],[data-mailed]');
+  if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
+  const d = t.dataset;
+  try {
+    if (d.nav){ S.view = d.nav; if (d.nav === 'admin' && !S.radar) S.radar = await store.getRadar() || {}; render(); $('.main').scrollTop = 0; return; }
+    if (d.open){ $('#gres')?.classList.add('hidden'); return openBrand(d.open); }
+    if (d.chased) return quickChased(d.chased);
+    if (d.snooze) return snooze(d.snooze, Number(d.days));
+    if (d.stage) return setStage(S.open, d.stage);
+    if (d.sort){ S.f.dir = S.f.sort === d.sort ? -S.f.dir : 1; S.f.sort = d.sort; return render(); }
+    if (d.sigAdd) return sigAdd(d.sigAdd);
+    if (d.sigDismiss){ await store.updateSignal(d.sigDismiss, {status:'dismissed', handledBy: me(), handledAt: new Date().toISOString()}); return; }
+    if (d.editContact !== undefined){ S.editingContact = Number(d.editContact); return renderDrawer(); }
+    if (d.mailed) return; // follow mailto link normally
+    switch (d.act){
+      case 'signin':
+        try { await store.signIn(); } catch (err){ if (err.code !== 'auth/popup-closed-by-user') renderLogin(err.message); }
+        break;
+      case 'signout': store.signOut(); break;
+      case 'close': closeDrawer(); break;
+      case 'clear-f': Object.assign(S.f, {q:'', sector:'', stage:'', prio:''}); render(); break;
+      case 'toggle-paused': S.f.showPaused = t.checked; render(); break;
+      case 'add-contact': S.editingContact = 'new'; renderDrawer(); setTimeout(() => $('#c-name')?.focus(), 0); break;
+      case 'cancel-contact': S.editingContact = null; renderDrawer(); break;
+      case 'save-contact': await saveContact(); break;
+      case 'del-contact': {
+        const b = byId(S.open); const c = b.contacts[S.editingContact];
+        if (!confirm(`Remove ${c.name || c.email}?`)) break;
+        const contacts = b.contacts.filter((_, i) => i !== S.editingContact); S.editingContact = null;
+        await store.update(b.id, {contacts}, entry('Note', `Removed contact ${c.name || c.email}`)); break;
+      }
+      case 'log': {
+        const txt = $('#t-text').value.trim(), type = $('#t-type').value;
+        if (!txt && type === 'Note'){ toast('Write a note first'); break; }
+        await logTouch(S.open, type, txt, $('#t-next').value || null); break;
+      }
+      case 'delete-brand': {
+        const b = byId(S.open);
+        if (!confirm(`Delete ${b.name} and all its contacts and history? This can't be undone.`)) break;
+        await store.remove(b.id); closeDrawer(); toast('Deleted'); break;
+      }
+      case 'new-brand':
+        modal(`<h3>Add a brand</h3>
+          <label class="l">Brand name</label><input class="f" id="m-name">
+          <div class="grid2" style="margin-top:12px">
+            <div><label class="l">Sector</label><select class="f" id="m-sector">${SECTORS.map(x => `<option>${x}</option>`).join('')}</select></div>
+            <div><label class="l">Priority</label><select class="f" id="m-prio">${PRIORITIES.map(x => `<option ${x==='Medium'?'selected':''}>${x}</option>`).join('')}</select></div>
+          </div>`, async () => {
+            const name = $('#m-name').value.trim(); if (!name) return false;
+            const dup = S.brands.find(b => b.name.toLowerCase() === name.toLowerCase());
+            if (dup){ toast(`${dup.name} is already in the app`); openBrand(dup.id); return; }
+            const id = await store.create(newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, log:[entry('Note','Brand added')]}));
+            setTimeout(() => openBrand(id), 200);
+          }, 'Add brand');
+        break;
+      case 'scan':
+        S.scanning = true; render();
+        try { const r = await store.runScan(); toast(`Scan done: ${r.added} new signal${r.added===1?'':'s'}`); }
+        catch (err){ toast('Scan failed: ' + (err.message || err)); }
+        S.scanning = false; render(); break;
+      case 'import': {
+        const file = $('#seedfile').files[0]; if (!file){ toast('Choose seed.json first'); break; }
+        const data = JSON.parse(await file.text());
+        const list = data.brands || data;
+        if (!confirm(`Import ${list.length} brands?`)) break;
+        t.disabled = true; t.textContent = 'Importing…';
+        const r = await store.importBrands(list, $('#seedover').checked);
+        toast(`Imported ${r.written}, skipped ${r.skipped}`); t.disabled = false; t.textContent = 'Import'; break;
+      }
+      case 'export': exportCsv(); break;
+      case 'save-radar': {
+        const queries = $('#radarq').value.split('\n').map(s => s.trim()).filter(Boolean);
+        S.radar = {...(S.radar||{}), queries}; await store.saveRadar(S.radar); toast('Saved'); break;
+      }
+    }
+  } catch (err){ console.error(err); toast('Something went wrong: ' + (err.code || err.message)); }
+});
+
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.dataset.f){ S.f[t.dataset.f] = t.value; render(); return; }
+  if (t.dataset.bf && S.open){
+    const b = byId(S.open); const k = t.dataset.bf; let v = t.value;
+    if (k === 'name'){ v = v.trim(); if (!v) return render(); }
+    if ((b[k] || '') === v) return;
+    await store.update(b.id, {[k]: v || (k === 'nextFollowUp' ? null : '')}, k === 'nextFollowUp' ? entry('Snooze', v ? `Follow-up set to ${fmtD(v)}` : 'Follow-up cleared') : null);
+  }
+});
+
+let qTimer;
+document.addEventListener('input', e => {
+  if (e.target.id === 'fq'){ clearTimeout(qTimer); qTimer = setTimeout(() => { S.f.q = e.target.value; render(); const i = $('#fq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); }
+  if (e.target.id === 'gsearch'){
+    const q = e.target.value.trim().toLowerCase(), box = $('#gres');
+    if (q.length < 2){ box.classList.add('hidden'); return; }
+    const hits = [];
+    S.brands.forEach(b => {
+      if (b.name.toLowerCase().includes(q)) hits.push(`<div data-open="${b.id}"><b>${esc(b.name)}</b> <span class="small muted">${esc(b.stage)} · ${esc(b.sector)}</span></div>`);
+      (b.contacts||[]).forEach(c => { if ((c.name + ' ' + c.email).toLowerCase().includes(q)) hits.push(`<div data-open="${b.id}">${esc(c.name)} <span class="small muted">${esc(c.title)} at ${esc(b.name)}</span></div>`); });
+    });
+    box.innerHTML = hits.slice(0, 12).join('') || '<div class="muted">No matches</div>';
+    box.classList.remove('hidden');
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){ if (document.querySelector('.modal')) document.querySelector('.modal').remove(); else if (S.open) closeDrawer(); }
+  if (e.key === 'Enter' && e.target.id === 't-text'){ document.querySelector('[data-act="log"]')?.click(); }
+});
+
+function exportCsv(){
+  const head = ['Brand','Sector','Stage','Priority','Last contact','Next follow-up','Contact','Job title','Email','Phone','LinkedIn','Flag','Budget','Opportunity','Shoot type','Notes'];
+  const rows = [head];
+  [...S.brands].sort((a,b) => a.name.localeCompare(b.name)).forEach(b => {
+    const base = [b.name, b.sector, b.stage, b.priority, b.lastContact||'', b.nextFollowUp||''];
+    const tail = [b.budget, b.opportunity, b.shootType, b.notes];
+    const cs = (b.contacts||[]).length ? b.contacts : [{}];
+    cs.forEach(c => rows.push([...base, c.name||'', c.title||'', c.email||'', c.phone||'', c.linkedin||'', c.flag||'', ...tail]));
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv'}));
+  a.download = `seventy7-new-business-${today()}.csv`; a.click();
+}
+
+// ===================================================================
+//  Boot
+// ===================================================================
+(async () => {
+  const onFirebaseHosting = /\.(web\.app|firebaseapp\.com)$/.test(location.hostname);
+  S.preview = !FIREBASE_CONFIG && !onFirebaseHosting;
+  try { store = S.preview ? await demoStore() : await firebaseStore(); }
+  catch (err){ $('#root').innerHTML = `<div class="login"><div class="box"><h1>Seventy7</h1><p>Couldn't connect to Firebase. Check FIREBASE_CONFIG at the top of index.html.</p></div></div>`; return; }
+  if (S.preview){ window.confirm = () => true; document.body.insertAdjacentHTML('beforeend', '<div class="pv">Preview · sample data · changes are not saved</div>'); }
+  let renderQueued = false;
+  const rerender = () => { if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false;
+    const a = document.activeElement;
+    const typing = a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['checkbox','file','radio'].includes(a.type)));
+    if (typing){ a.addEventListener('blur', () => setTimeout(rerender, 50), {once:true}); return; }
+    render(); }); };
+  store.onAuth(user => {
+    if (!user){ S.user = null; return renderLogin(); }
+    if (!user.email?.toLowerCase().endsWith('@' + DOMAIN)){ store.signOut(); return renderLogin(`Use your @${DOMAIN} account.`); }
+    S.user = user; S.isAdmin = ADMINS.includes(user.email.toLowerCase());
+    $('#root').innerHTML = '<div class="login"><div class="box"><p>Loading…</p></div></div>';
+    store.listen(
+      brands => { S.brands = brands; rerender(); },
+      signals => { S.signals = signals; rerender(); },
+      err => { if (err.code === 'permission-denied'){ store.signOut(); renderLogin("Your account doesn't have access yet. Ask Kevin to add you."); } }
+    );
+  });
+})();
+</script>
+</body>
+</html>
