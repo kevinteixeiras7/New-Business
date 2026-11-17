@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// Seventy7 New Business
+// Only these accounts can read or write anything. To change access, edit TEAM and run:
+//   firebase deploy --only firestore:rules
+// Keep functions/index.js TEAM in step so "Scan now" works for the same people.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function team() {
+      return [
+        'kevin.teixeira@seventy7group.com',
+        'kelly.primrose@seventy7group.com',
+        'kate.obrien@seventy7group.com',
+        'emily.harvey@seventy7group.com',
+        'jayne.riley@seventy7group.com',
+        'kira.jones@seventy7group.com'
+      ];
+    }
+
+    function isTeam() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in team();
+    }
+
+    function validBrand() {
+      let d = request.resource.data;
+      return d.name is string && d.name.size() > 0 && d.name.size() < 120
+        && d.stage in ['Prospect','Contacted','Portfolio Sent','Meeting','Proposal','Won','Lost','Paused']
+        && (!('contacts' in d) || (d.contacts is list && d.contacts.size() <= 40))
+        && (!('log' in d) || (d.log is list && d.log.size() <= 1000));
+    }
+
+    match /brands/{id} {
+      allow read: if isTeam();
+      allow create, update: if isTeam() && validBrand();
+      allow delete: if isTeam();
+    }
+
+    // Written by the scan function (admin SDK). The team can only mark them handled.
+    match /signals/{id} {
+      allow read: if isTeam();
+      allow update: if isTeam()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status','brandId','handledBy','handledAt'])
+        && request.resource.data.status in ['new','added','dismissed'];
+    }
+
+    match /settings/{id} {
+      allow read, write: if isTeam();
+    }
+  }
+}
