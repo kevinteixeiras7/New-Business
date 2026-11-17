@@ -217,6 +217,89 @@ exports.runScanNow = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (re
   return runScan(email);
 });
 
+
+// ---------------------------------------------------------------------------
+//  Contact finder: looks up a brand's website and the business inbox it
+//  publishes (press, marketing, partnerships, hello). Only addresses printed on
+//  the brand's own site are returned, never guessed personal emails.
+// ---------------------------------------------------------------------------
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+const SKIP_HOSTS = /(instagram|facebook|tiktok|twitter|x\.com|linkedin|youtube|pinterest|wikipedia|amazon|asos|selfridges|harrods|johnlewis|zalando|farfetch|net-a-porter|ssense|endclothing|trustpilot|glassdoor|companieshouse|crunchbase|vogue|drapers|businessoffashion|reddit|duckduckgo|bing\.com|google\.)/i;
+async function get(url, ms = 8000){
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { const r = await fetch(url, {headers: {'User-Agent': UA, 'Accept-Language': 'en-GB,en'}, redirect: 'follow', signal: c.signal});
+    if (!r.ok) return null; const ct = r.headers.get('content-type') || '';
+    if (!/html|text/.test(ct)) return null; return {url: r.url, html: (await r.text()).slice(0, 600000)}; }
+  catch { return null; } finally { clearTimeout(t); }
+}
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const brandWords = n => n.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the','and','of','ltd','london','uk','fc'].includes(w));
+async function searchSites(q){
+  const out = [];
+  const ddg = await get('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q));
+  if (ddg) for (const m of ddg.html.matchAll(/class="result__a"[^>]*href="([^"]+)"/g)){
+    let u = m[1].replace(/&amp;/g, '&'); const k = u.match(/uddg=([^&]+)/); if (k) u = decodeURIComponent(k[1]);
+    if (u.startsWith('//')) u = 'https:' + u; out.push(u);
+  }
+  if (!out.length){
+    const bing = await get('https://www.bing.com/search?setlang=en-GB&cc=GB&q=' + encodeURIComponent(q));
+    if (bing) for (const m of bing.html.matchAll(/<li class="b_algo"[\s\S]*?<a[^>]+href="(https?:[^"]+)"/g)) out.push(m[1].replace(/&amp;/g, '&'));
+  }
+  return out.filter(u => /^https?:/.test(u) && !SKIP_HOSTS.test(hostOf(u)));
+}
+async function findWebsite(name, hint){
+  if (hint) { const h = hostOf(/^https?:/.test(hint) ? hint : 'https://' + hint); if (h) return 'https://' + h; }
+  const words = brandWords(name);
+  const hits = await searchSites(`${name} official site`);
+  const good = hits.find(u => words.some(w => hostOf(u).replace(/[^a-z0-9]/g, '').includes(w.replace(/[^a-z0-9]/g, ''))));
+  if (good) return 'https://' + hostOf(good);
+  const slug = words.join('');
+  for (const tld of ['.com', '.co.uk', '.london']){
+    const p = await get(`https://${slug}${tld}`, 5000);
+    if (p && words.some(w => p.html.toLowerCase().includes(w))) return 'https://' + hostOf(p.url);
+  }
+  return '';
+}
+const RANK = [[/^(press|pr|media|publicity)/, 'Press inbox', 1], [/^(marketing|brand|partnerships?|collab|collabs|collaborations?|creative|content|social|influencer)/, 'Marketing inbox', 1],
+  [/^(hello|hi|info|contact|enquiries|enquiry|studio|team|office|general|business|wholesale)/, 'General inbox', 2], [/^(customer|care|help|support|service|orders?|returns|shop|sales|cs)/, 'Customer service inbox', 3]];
+const JUNK = /^(no-?reply|donotreply|privacy|gdpr|dpo|legal|abuse|webmaster|postmaster|careers|jobs|recruit|hr|accounts|invoices?|finance|unsubscribe)|sentry|wixpress|example|\.(png|jpg|gif|webp|svg)$/i;
+function pickEmail(html, site){
+  const base = hostOf(site).split('.').slice(-3).join('.');
+  const found = new Set();
+  for (const m of html.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)) found.add(m[0].toLowerCase().replace(/\.$/, ''));
+  const scored = [...found].filter(e => !JUNK.test(e)).map(e => {
+    const local = e.split('@')[0], dom = e.split('@')[1];
+    const own = dom.endsWith(base) || base.endsWith(dom) || brandWordsMatch(dom, base);
+    const r = RANK.find(([re]) => re.test(local));
+    return {email: e, kind: r ? r[1] : 'Inbox', score: (own ? 0 : 10) + (r ? r[2] : 2.5)};
+  }).filter(x => x.score < 10).sort((a, b) => a.score - b.score);
+  return scored[0] || null;
+}
+function brandWordsMatch(dom, base){ const a = dom.split('.')[0], b = base.split('.')[0]; return a.length > 3 && (a.includes(b) || b.includes(a)); }
+async function findContact(name, hint){
+  const site = await findWebsite(name, hint);
+  if (!site) return {website: '', email: '', note: 'Could not find a website'};
+  const paths = ['', '/contact', '/contact-us', '/pages/contact', '/pages/contact-us', '/press', '/pages/press', '/about', '/pages/about-us', '/customer-service'];
+  let best = null;
+  for (const p of paths){
+    const pg = await get(site + p, 6000); if (!pg) continue;
+    const e = pickEmail(pg.html, site);
+    if (e && (!best || e.score < best.score)) best = {...e, source: pg.url};
+    if (best && best.score <= 1) break;
+  }
+  return best ? {website: site, email: best.email, kind: best.kind, source: best.source} : {website: site, email: '', note: 'No published email on the site'};
+}
+exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstances: 4 }, async (req) => {
+  const email = (req.auth?.token?.email || '').toLowerCase();
+  if (!req.auth || !req.auth.token.email_verified || !TEAM.includes(email)) throw new HttpsError('permission-denied', 'Not on the new business team');
+  const name = String(req.data?.name || '').slice(0, 120).trim();
+  if (!name) throw new HttpsError('invalid-argument', 'Brand name needed');
+  const r = await findContact(name, String(req.data?.website || '').slice(0, 200));
+  logger.info('findContact', {name, found: !!r.email, website: r.website});
+  return r;
+});
+exports._findContact = findContact;
+
 // exported for local testing
 exports._classify = classify;
 exports._DEFAULT_QUERIES = DEFAULT_QUERIES;

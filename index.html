@@ -180,6 +180,39 @@ table.t tr.click:hover td{background:#fbfaf8}
 @media (max-width:1100px){.rgrid{grid-template-columns:1fr 1fr}}
 @media (max-width:900px){.rgrid{grid-template-columns:1fr}.cl{grid-template-columns:1fr}.cl-act{justify-content:flex-start}.rr-when{display:none}.rhead{flex-wrap:wrap}}
 
+.rm{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.rm:last-child{border-bottom:none}
+.rm-main{flex:1;min-width:0}
+.rm-top{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rm-why{font-size:12.5px;color:var(--muted);margin-top:3px}
+.rm-hot{font-size:11px;font-weight:700;color:var(--hot)}
+.more-row{padding:10px 16px;text-align:center;border-top:1px solid var(--line2)}
+.ai{color:#7c3aed;font-weight:700}
+.ai-w{color:#c4b5fd;margin-right:2px}
+.nav .count.grey{background:#3a3a3a;color:#cfcdc7}
+.nav button.on .count.grey{background:var(--line2);color:var(--ink)}
+.fr{display:grid;grid-template-columns:1.1fr 1fr 1.3fr;gap:16px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.fr:last-child{border-bottom:none}
+.fr a{text-decoration:none}
+.fr-w{display:flex;flex-direction:column;gap:1px;line-height:1.35}
+.fr-w>span:first-child{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.fr-w a{color:var(--blue);margin-top:2px}
+.fr-in{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fr-in .f{flex:1;min-width:150px;padding:7px 10px}
+.fr2{display:grid;grid-template-columns:1fr 1.4fr auto;gap:16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.fr2:last-child{border-bottom:none}
+.fr2-b,.fr2-e{display:flex;flex-direction:column;line-height:1.35}
+.fr2 a{text-decoration:none}
+.fr2-a{display:flex;gap:6px}
+.tool{display:flex;gap:16px;align-items:center}
+.tool>div{flex:1}
+.plist{max-height:50vh;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.plist>*{display:flex;gap:10px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line2);font-size:13px}
+.plist>*:last-child{border-bottom:none}
+.plist span{color:var(--muted);flex:1}
+.plist div b{flex:1}
+@media (max-width:900px){.fr,.fr2{grid-template-columns:1fr}.tool{flex-direction:column;align-items:flex-start}
+  .side{-webkit-mask-image:linear-gradient(to right,#000 82%,transparent);mask-image:linear-gradient(to right,#000 82%,transparent);scroll-behavior:smooth}}
 /* dashboard */
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .bar{height:8px;background:var(--line2);border-radius:5px;overflow:hidden}
@@ -238,6 +271,7 @@ table.t tr.click:hover td{background:#fbfaf8}
   .app{grid-template-columns:1fr}
   .side{flex-direction:row;align-items:center;padding:10px 12px;overflow-x:auto}
   .side .nav{flex-direction:row;margin:0 0 0 14px}
+  .side .nav button{white-space:nowrap;gap:6px}
   .side .me,.logo small,.xlink{display:none}
   .mobile-only{display:flex;flex-basis:100%;justify-content:flex-end}
   .today,.dash{grid-template-columns:1fr}
@@ -448,7 +482,8 @@ async function firebaseStore(){
     },
     async getRadar(){ const d = await F.getDoc(F.doc(db,'settings','radar')); return d.exists() ? d.data() : null; },
     saveRadar(data){ return F.setDoc(F.doc(db,'settings','radar'), {queries: data.queries, updatedAt: now()}, {merge:true}); },
-    async runScan(){ const r = await Fn.httpsCallable(fns,'runScanNow',{timeout:300000})(); return r.data; }
+    async runScan(){ const r = await Fn.httpsCallable(fns,'runScanNow',{timeout:300000})(); return r.data; },
+    async findContact(name, website){ const r = await Fn.httpsCallable(fns,'findContact',{timeout:120000})({name, website}); return r.data; }
   };
 }
 
@@ -482,7 +517,8 @@ async function demoStore(){
     async updateSignal(id, patch){ signals = signals.map(s => s.id === id ? {...s, ...patch} : s); emit(); },
     async importBrands(list){ return {written:0, skipped:list.length}; },
     async getRadar(){ return null; }, async saveRadar(){},
-    async runScan(){ await new Promise(r => setTimeout(r, 900)); return {added:0, scanned:0}; }
+    async runScan(){ await new Promise(r => setTimeout(r, 900)); return {added:0, scanned:0}; },
+    async findContact(name){ await new Promise(r => setTimeout(r, 500)); const d = name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.com'; return Math.random() < .6 ? {website:'https://'+d, email:'press@'+d, kind:'Press inbox', source:'https://'+d+'/contact'} : {website:'https://'+d, email:'', note:'No published email on the site'}; }
   };
 }
 
@@ -587,7 +623,7 @@ function renderCompose(){
     m.innerHTML = `<div class="box" style="width:min(640px,94vw)">
       <h3>Email ${esc(b.name)}</h3>
       <div class="grid2">
-        <div><label class="l">To</label><select class="f" id="cp-to">${(b.contacts||[]).map((c, i) => c.email ? `<option value="${i}" ${i===C.ci?'selected':''}>${esc(c.name || c.email)}${c.title ? ' · ' + esc(c.title) : ''}</option>` : '').join('')}</select></div>
+        <div><label class="l">To</label><select class="f" id="cp-to">${(b.contacts||[]).map((c, i) => c.email ? `<option value="${i}" ${i===C.ci?'selected':''}>${c.ai ? '✦ ' : ''}${esc(c.name || c.email)}${c.title ? ' · ' + esc(c.title) : ''}</option>` : '').join('')}</select></div>
         <div><label class="l">Portfolio</label><select class="f" id="cp-deck"><option value="">No portfolio</option>${DECKS.map(d => `<option value="${d.key}" ${C.deck===d.key?'selected':''}>${esc(d.name)}${d.key===sug?' (suggested)':''}</option>`).join('')}</select></div>
       </div>
       <label class="small" style="display:block;margin:10px 0 2px"><input type="checkbox" id="cp-reel" ${C.reel?'checked':''}> Include the showreel</label>
@@ -763,14 +799,14 @@ function render(){
   if (!S.user){ return renderLogin(); }
   const dueCount = S.brands.filter(b => b.nextFollowUp && b.nextFollowUp <= today() && !['Won','Lost','Paused'].includes(b.stage)).length;
   const newSig = groupSigs(S.signals.filter(s => s.status === 'new')).length;
-  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['clients','Clients'],['radar','Radar',newSig],['dashboard','Dashboard']];
+  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['find','Find contacts',null,findCount()],['clients','Clients'],['radar','Radar',newSig],['dashboard','Dashboard']];
   if (S.isAdmin) navs.push(['admin','Admin']);
-  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', clients:'Client directory', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
+  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', find:'Find contacts', clients:'Client directory', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
   $('#root').innerHTML = `
   <div class="app">
     <aside class="side">
       <div class="logo">Seventy7<small>New Business</small></div>
-      <nav class="nav">${navs.map(([k,l,c]) => `<button data-nav="${k}" class="${S.view===k?'on':''}">${l}${c?`<span class="count">${c}</span>`:''}</button>`).join('')}</nav>
+      <nav class="nav">${navs.map(([k,l,c,g]) => `<button data-nav="${k}" class="${S.view===k?'on':''}">${l}${c?`<span class="count">${c}</span>`:g?`<span class="count grey">${g}</span>`:''}</button>`).join('')}</nav>
       <a class="xlink" href="${STUDIO_REPORTING_URL}" target="_blank" rel="noopener">Studio Reporting ↗</a>
       <div class="me"><b>${esc(S.user.displayName || '')}</b>${esc(S.user.email)}<br><button data-act="signout">Sign out</button></div>
     </aside>
@@ -782,7 +818,7 @@ function render(){
         <button class="btn dark" data-act="new-brand">+ Add brand</button>
         <span class="mobile-only" style="gap:6px"><a class="btn sm ghost" href="${STUDIO_REPORTING_URL}" target="_blank" rel="noopener">Studio Reporting ↗</a><button class="btn sm ghost" data-act="signout">Sign out</button></span>
       </div>
-      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, clients:vClients, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
+      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, find:vFind, clients:vClients, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
     </main>
   </div>`;
   if (S.view === 'pipeline') wireBoard();
@@ -862,17 +898,17 @@ function vToday(){
         ${due.length ? due.map(b => brandRow(b, {quick:true})).join('') : '<div class="empty">Nothing due. Nice.</div>'}
       </div>
       <div class="card">
-        <div class="panel-h"><h3>This week</h3></div>
-        ${soon.length ? soon.map(b => brandRow(b, {email:true})).join('') : '<div class="empty">Nothing scheduled this week.</div>'}
+        <div class="panel-h"><h3>This week</h3><span class="small muted">${soon.length} due in the next 7 days</span></div>
+        ${soon.length ? (S.showWeek ? soon : soon.slice(0, 8)).map(b => brandRow(b, {email:true})).join('') + (soon.length > 8 ? `<div class="more-row"><button class="btn sm ghost" data-act="toggle-week">${S.showWeek ? 'Show fewer' : `See all ${soon.length}`}</button></div>` : '') : '<div class="empty">Nothing scheduled this week.</div>'}
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card">
-        <div class="panel-h"><h3>Fresh on the radar</h3><button class="btn sm ghost" data-nav="radar">See all</button></div>
-        ${sigs.length ? groupSigs(sigs).slice(0, 5).map(radarRow).join('') : `<div class="empty">${S.signals.length ? 'No new signals. The radar scans every morning at 7am.' : "The news radar isn't switched on yet."}</div>`}
+        <div class="panel-h"><h3>Fresh on the radar</h3><button class="btn sm ghost" data-nav="radar">See all ${groupSigs(S.signals.filter(x => x.status === 'new')).length}</button></div>
+        ${sigs.length ? groupSigs(sigs).filter(g => !clientInTitle(g[0].title)).slice(0, 4).map(radarMini).join('') : `<div class="empty">${S.signals.length ? 'No new signals. The radar scans every morning at 7am.' : "The news radar isn't switched on yet."}</div>`}
       </div>
       <div class="card">
-        <div class="panel-h"><h3>Ready to contact</h3><span class="small muted">${needsContact} more need a contact</span></div>
+        <div class="panel-h"><h3>Ready to contact</h3><button class="btn sm ghost" data-nav="find">${needsContact} need a contact</button></div>
         ${ready.length ? ready.map(b => brandRow(b, {due:false, email:true})).join('') : '<div class="empty">No prospects with an email yet.</div>'}
       </div>
     </div>
@@ -1079,6 +1115,14 @@ function radarRow(g){
   </div>`;
 }
 
+function radarMini(g){
+  const s = g[0], name = sigBrandName(s), b = s.brandId && byId(s.brandId);
+  return `<div class="rm">
+    <div class="rm-main"><div class="rm-top"><b>${name ? esc(name) : 'Brand to confirm'}</b><span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>${s.score >= 8 ? '<span class="rm-hot">Strong</span>' : ''}</div>
+      <div class="rm-why">${esc(sigInfo(s).why)}</div></div>
+    <button class="btn sm" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}">${b ? 'Chase' : 'Add'}</button>
+  </div>`;
+}
 function contactListRows(){
   // Brands added from the radar, newest first, one row each
   const seen = new Set(), rows = [];
@@ -1225,6 +1269,138 @@ async function sigEmail(id){
   openCompose(b.id, ci < 0 ? null : ci);
 }
 
+
+// ---------- Find contacts ----------
+const ROLE_BY_SECTOR = {Beauty:'Head of Brand', Sportswear:'Brand Marketing Manager', Interiors:'Head of Brand'};
+const suggestRole = b => ROLE_BY_SECTOR[b.sector] || 'Head of Marketing';
+const aiHost = c => { try { return new URL(c.aiSource).hostname.replace(/^www\./,''); } catch { return 'their website'; } };
+const aiMark = c => c && c.ai ? ` <span class="ai" title="Found automatically on ${esc(aiHost(c))}. Check it before relying on it.">✦</span>` : '';
+const needsEmail = b => !['Won','Lost'].includes(b.stage) && !(b.contacts || []).some(c => c.email) && !clientMatch(b)?.current;
+const findCount = () => S.brands.filter(needsEmail).length;
+const PRANK = {High:0, Medium:1, Low:2};
+function vFind(){
+  const f = S.f, F = S.finding;
+  const list = S.brands.filter(needsEmail).filter(b => !f.sector || b.sector === f.sector)
+    .sort((a, b) => (PRANK[a.priority] ?? 1) - (PRANK[b.priority] ?? 1) || STAGES.indexOf(b.stage) - STAGES.indexOf(a.stage) || a.name.localeCompare(b.name));
+  const found = S.brands.flatMap(b => (b.contacts || []).map((c, i) => ({b, c, i}))).filter(x => x.c.ai && !x.c.aiChecked);
+  return `<div class="card" style="padding:16px 18px;margin-bottom:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px"><b>${list.length} brands have no email address yet.</b>
+        <div class="small muted" style="margin-top:4px"><span class="ai">✦</span> Find looks up each brand's website and the press or marketing inbox it publishes there. Anything it finds is marked <span class="ai">✦</span> until someone checks it. For a named person, use the LinkedIn search and paste the email in.</div></div>
+      ${F ? `<div class="small"><b>Searching ${F.i} of ${F.n}</b> · found ${F.hits}</div><button class="btn" data-act="find-stop">Stop</button>`
+          : `<button class="btn dark" data-act="find-all" ${list.length ? '' : 'disabled'}><span class="ai-w">✦</span> Find all ${list.filter(b => !b.aiTried).length}</button>`}
+    </div>
+    ${found.length ? `<div class="card" style="margin-bottom:16px"><div class="panel-h"><h3><span class="ai">✦</span> Found automatically, please check</h3><span class="small muted">${found.length} to check</span></div>
+      ${found.map(({b, c, i}) => `<div class="fr2">
+        <div class="fr2-b"><a href="#" data-open="${b.id}"><b>${esc(b.name)}</b></a><span class="small muted">${esc(b.sector)}</span></div>
+        <div class="fr2-e"><b>${esc(c.email)}</b><span class="small muted">${esc(c.title || 'Inbox')} · from <a href="${esc(c.aiSource || '#')}" target="_blank" rel="noopener">${esc(aiHost(c))}</a></span></div>
+        <div class="fr2-a"><button class="btn sm dark" data-act="ai-ok" data-id="${b.id}" data-ci="${i}">Looks right</button><button class="btn sm ghost" data-act="ai-no" data-id="${b.id}" data-ci="${i}">Remove</button></div>
+      </div>`).join('')}</div>` : ''}
+    <div class="filters"><select data-f="sector"><option value="">All sectors</option>${SECTORS.map(x => `<option ${f.sector===x?'selected':''}>${x}</option>`).join('')}</select><span class="small muted">Highest priority and furthest along first</span></div>
+    <div class="card">${list.length ? list.map(b => {
+      const named = (b.contacts || []).find(c => c.name);
+      const role = named ? named.title || suggestRole(b) : suggestRole(b);
+      const tried = b.aiTried ? `<span class="small muted"><span class="ai">✦</span> ${b.aiNote ? esc(b.aiNote) : 'Searched'}${b.website ? ` · <a href="${esc(b.website)}" target="_blank" rel="noopener">${esc(b.website.replace(/^https?:\/\/(www\.)?/,''))}</a>` : ''}</span>` : '';
+      return `<div class="fr">
+        <div class="fr-b"><a href="#" data-open="${b.id}"><b>${esc(b.name)}</b></a> <span class="chip">${esc(b.stage)}</span>${b.priority === 'High' ? ' <span class="chip dark">High</span>' : ''}<div class="small muted">${esc(b.sector)}</div></div>
+        <div class="fr-w"><span class="small muted">${named ? 'Contact' : 'Suggested'}</span><b>${esc(named ? named.name : role)}</b>${named && named.title ? `<span class="small muted">${esc(named.title)}</span>` : ''}
+          <a class="small" href="${linkedInUrl(b.name, named ? named.name : role)}" target="_blank" rel="noopener">Find on LinkedIn ↗</a></div>
+        <div class="fr-in"><input class="f" type="email" id="fe-${b.id}" placeholder="Paste an email"><button class="btn sm dark" data-act="fe-save" data-id="${b.id}">Save</button>
+          <button class="btn sm" data-act="find-one" data-id="${b.id}" ${F ? 'disabled' : ''} title="Look up the website's published inbox"><span class="ai">✦</span> Find</button>${tried ? `<div style="flex-basis:100%">${tried}</div>` : ''}</div>
+      </div>`; }).join('') : '<div class="empty">Every active brand has an email address. Nice.</div>'}</div>`;
+}
+async function findOne(id, quiet){
+  const b = byId(id); if (!b) return false;
+  let r;
+  try { r = await store.findContact(b.name, b.website || ''); }
+  catch (e){ if (!quiet) toast('Search failed, try again in a minute'); return false; }
+  const cur = byId(id); const contacts = [...(cur.contacts || [])];
+  const patch = {aiTried: today(), aiNote: r.email ? '' : (r.note || 'No published email found')};
+  if (r.website && !cur.website) patch.website = r.website;
+  if (r.email && !contacts.some(c => (c.email || '').toLowerCase() === r.email)){
+    contacts.push({name:'', title: r.kind || 'Inbox', email: r.email, phone:'', linkedin:'', flag:'', ai:true, aiSource: r.source || r.website || ''});
+    patch.contacts = contacts;
+  }
+  await store.update(id, patch, patch.contacts ? entry('Note', `✦ Found ${r.email} on ${r.source || r.website}`) : null);
+  if (!quiet) toast(r.email ? `✦ Found ${r.email}` : `No published email for ${b.name}${r.website ? ' (website saved)' : ''}`);
+  return !!r.email;
+}
+async function findAll(){
+  if (S.finding) return;
+  const ids = S.brands.filter(needsEmail).filter(b => !b.aiTried).sort((a, b) => (PRANK[a.priority] ?? 1) - (PRANK[b.priority] ?? 1)).map(b => b.id);
+  if (!ids.length){ toast('Every brand on the list has already been searched'); return; }
+  S.finding = {i: 0, n: ids.length, hits: 0, stop: false}; render();
+  let next = 0;
+  const worker = async () => { while (!S.finding.stop && next < ids.length){ const id = ids[next++]; if (await findOne(id, true)) S.finding.hits++; S.finding.i++; render(); } };
+  await Promise.all([worker(), worker(), worker()]);
+  const F = S.finding; S.finding = null; render();
+  toast(`${F.stop ? 'Stopped. ' : ''}Searched ${F.i}, found ${F.hits} ${F.hits === 1 ? 'inbox' : 'inboxes'} to check`);
+}
+async function saveFoundEmail(id){
+  const b = byId(id), el = $('#fe-' + id); const email = (el?.value || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('That email doesn\'t look right'); el?.focus(); return; }
+  const contacts = [...(b.contacts || [])];
+  const named = contacts.findIndex(c => c.name && !c.email);
+  if (named >= 0) contacts[named] = {...contacts[named], email};
+  else contacts.push({name:'', title: suggestRole(b), email, phone:'', linkedin:'', flag:''});
+  await store.update(id, {contacts}, entry('Note', `Added email ${email}`));
+  toast(`Saved. ${b.name} is now ready to contact`);
+}
+async function aiConfirm(id, i, ok){
+  const b = byId(id); const contacts = [...(b.contacts || [])]; if (!contacts[i]) return;
+  if (ok) contacts[i] = {...contacts[i], aiChecked: true}; else contacts.splice(i, 1);
+  await store.update(id, {contacts}, ok ? null : entry('Note', `Removed auto-found ${b.contacts[i].email}`));
+}
+
+// ---------- Admin tidy-ups ----------
+const isWeekend = d => [0, 6].includes(parseD(d).getDay());
+function spreadPlan(cap){
+  const t = today();
+  const live = S.brands.filter(b => b.nextFollowUp && !['Won','Lost','Paused'].includes(b.stage))
+    .sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp) || (PRANK[a.priority] ?? 1) - (PRANK[b.priority] ?? 1));
+  const per = {}, moves = [], orig = {};
+  live.forEach(b => { const d = b.nextFollowUp < t ? t : b.nextFollowUp; orig[d] = (orig[d] || 0) + 1; });
+  for (const b of live){
+    let d = b.nextFollowUp < t ? t : b.nextFollowUp;
+    while (isWeekend(d) || (per[d] || 0) >= cap) d = addDays(d, 1);
+    per[d] = (per[d] || 0) + 1;
+    if (d !== b.nextFollowUp && !(b.nextFollowUp < t && d === t)) moves.push({b, from: b.nextFollowUp, to: d});
+  }
+  const top = Object.entries(orig).sort((a, b) => b[1] - a[1])[0] || [t, 0];
+  return {moves, busiest: {d: top[0], n: top[1]}};
+}
+function spreadReview(){
+  const p = spreadPlan(6);
+  modal(`<h3>Spread out ${p.moves.length} follow-ups</h3>
+    <p class="small muted" style="margin-top:-6px">No working day gets more than 6. Overdue and high priority brands keep the earliest slots. Nothing is moved earlier.</p>
+    <div class="plist">${p.moves.map(m => `<div><b>${esc(m.b.name)}</b><span>${fmtD(m.from)} → ${fmtD(m.to)}</span></div>`).join('')}</div>`, async () => {
+      for (const m of p.moves) await store.update(m.b.id, {nextFollowUp: m.to}, null);
+      toast(`Spread ${p.moves.length} follow-ups`);
+    }, `Spread ${p.moves.length}`);
+}
+const KEEP = new Set(['ASICS','AYBL','ELF','FC','AFC','FRKL','LNDR','MAC','NARS','REFY','JW','UK','USA','NYX','DKNY','ASOS','CDLP']);
+const SPECIAL = {'LOREAL':"L'Oréal", 'MCLAREN':'McLaren', 'NOBODYS CHILD':"Nobody's Child", 'NEILS YARD':"Neal's Yard", 'SIMMI LODNON':'Simmi London', 'JESSICA MCKORMACK':'Jessica McCormack', '4TH & RECKLESS':'4th & Reckless'};
+const SMALL = new Set(['AND','OF','THE','DI','DE','DA','LA','X','BY','IN','ON']);
+function tidyName(n){
+  if (n !== n.toUpperCase() || !/[A-Z]/.test(n)) return n;
+  if (SPECIAL[n]) return SPECIAL[n];
+  return n.split(/\s+/).map((w, i) => {
+    if (KEEP.has(w) || /[+&]/.test(w) && w.length > 1 || /\d/.test(w) && !/^\d+(ST|ND|RD|TH)$/.test(w)) return w;
+    if (i > 0 && SMALL.has(w)) return w.toLowerCase();
+    return w.toLowerCase().replace(/(^|[-'’])([a-zà-ÿ])/g, (m, a, c) => a + c.toUpperCase()).replace(/^Mc([a-z])/, (m, c) => 'Mc' + c.toUpperCase());
+  }).join(' ');
+}
+const tidyPlan = () => S.brands.map(b => ({b, from: b.name, to: tidyName(b.name)})).filter(x => x.from !== x.to).sort((a, b) => a.from.localeCompare(b.from));
+function tidyReview(){
+  const p = tidyPlan();
+  modal(`<h3>Tidy ${p.length} brand names</h3>
+    <p class="small muted" style="margin-top:-6px">Untick any you'd rather keep as they are. Brand pages, history and links don't change.</p>
+    <div class="plist">${p.map((x, i) => `<label><input type="checkbox" data-tidy="${i}" checked> <span>${esc(x.from)}</span><b>${esc(x.to)}</b></label>`).join('')}</div>`, async () => {
+      const on = [...document.querySelectorAll('[data-tidy]')].filter(el => el.checked).map(el => p[Number(el.dataset.tidy)]);
+      for (const x of on) await store.update(x.b.id, {name: x.to}, null);
+      toast(`Tidied ${on.length} names`);
+    }, 'Tidy names');
+}
+
 // ---------- Dashboard ----------
 function linkStatsCard(){
   const sent = S.links.filter(l => l.sent);
@@ -1291,7 +1467,14 @@ function vDash(){
 // ---------- Admin ----------
 function vAdmin(){
   const r = S.radar || {};
+  const sp = spreadPlan(6), tidy = tidyPlan();
   return `<div style="display:grid;gap:18px;max-width:820px">
+    <div class="card"><div class="panel-h"><h3>Tidy-ups</h3></div><div style="padding:16px;display:grid;gap:14px">
+      <div class="tool"><div><b>Spread out follow-ups</b><div class="small muted">${sp.moves.length ? `${sp.busiest.n} brands land on ${fmtD(sp.busiest.d)} alone. Spreading moves ${sp.moves.length} follow-ups later so no working day has more than 6.` : 'Follow-ups are already spread out: no working day has more than 6.'}</div></div>
+        <button class="btn" data-act="spread" ${sp.moves.length ? '' : 'disabled'}>Review and spread</button></div>
+      <div class="tool"><div><b>Tidy brand names</b><div class="small muted">${tidy.length ? `${tidy.length} names are in ALL CAPS from the old sheet, e.g. ${esc(tidy[0].from)} → ${esc(tidy[0].to)}. Acronyms like ASICS stay as they are.` : 'All brand names are already tidy.'}</div></div>
+        <button class="btn" data-act="tidy" ${tidy.length ? '' : 'disabled'}>Review and tidy</button></div>
+    </div></div>
     <div class="card"><div class="panel-h"><h3>Import tracker data</h3></div><div style="padding:16px">
       <p class="small muted" style="margin-top:0">Load <b>seed.json</b> (outreach tracker) or <b>clients.json</b> (client directory). Anything already in the app is skipped unless you tick overwrite.</p>
       <input type="file" id="seedfile" accept=".json" class="f" style="margin-bottom:10px">
@@ -1318,7 +1501,7 @@ function vAdmin(){
 // ===================================================================
 function newBrand(p){
   return {id: slug(p.name), name: p.name, sector: p.sector || 'Other', website: '', stage: 'Prospect', priority: p.priority || 'Medium',
-    lastContact: null, nextFollowUp: p.nextFollowUp || null, contacts: [], notes: p.notes || '', budget:'', opportunity:'', shootType:'', campaignType:'', log: p.log || []};
+    lastContact: null, nextFollowUp: p.nextFollowUp || addDays(today(), 7), contacts: [], notes: p.notes || '', budget:'', opportunity:'', shootType:'', campaignType:'', log: p.log || []};
 }
 function engagementLine(b){
   const L = S.links.filter(l => l.brandId === b.id && l.sent);
@@ -1352,7 +1535,7 @@ function vClients(){
       const more = (c.contacts || []).length - ps.length;
       return `<div class="card ccard" data-open-client="${c.id}">
         <h4>${esc(c.name)} ${c.status === 'Lapsed' ? '<span class="chip blue">Lapsed</span>' : ''}</h4>
-        ${ps.map(p => `<div class="p"><span class="role Main">Main</span>${esc(p.name || p.email)}${p.email ? ` <span class="muted">${esc(p.email)}</span>` : ''}</div>`).join('') || '<div class="p muted">No main contact</div>'}
+        ${ps.map(p => `<div class="p" title="${esc(p.email || '')}"><span class="role Main">Main</span>${esc(p.name || p.email)}</div>`).join('') || '<div class="p muted">No main contact</div>'}
         ${more > 0 ? `<div class="p muted">+ ${more} more contact${more === 1 ? '' : 's'}</div>` : ''}
       </div>`; }).join('')}</div>
     <div class="small muted" style="margin-top:10px">${list.length} clients · ${list.reduce((n, c) => n + (c.contacts||[]).length, 0)} contacts</div>`;
@@ -1495,7 +1678,7 @@ function renderDrawer(){
 
       <div class="sec"><h4 style="display:flex;justify-content:space-between">Contacts <button class="btn sm" data-act="add-contact">+ Add</button></h4>
         ${contacts.map((c, i) => ec === i ? contactForm(c) : `<div class="contact">
-          <div class="ci"><b>${esc(c.name || 'Unnamed')}</b> <span class="muted small">${esc(c.title)}</span>
+          <div class="ci"><b>${esc(c.name || (c.ai ? c.title || 'Inbox' : 'Unnamed'))}</b>${aiMark(c)} <span class="muted small">${c.name || !c.ai ? esc(c.title) : ''}</span>
             ${c.flag ? `<div><span class="chip warn">${esc(c.flag)}</span></div>` : ''}
             <div class="small">${c.email ? esc(c.email) : '<span class="muted">No email</span>'}${c.phone ? ' · ' + esc(c.phone) : ''}${c.linkedin ? ` · <a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ''}</div></div>
           <div style="display:flex;gap:4px">${c.email ? `<button class="btn sm" data-compose="${b.id}" data-ci="${i}">Email</button>` : ''}<button class="btn sm ghost" data-edit-contact="${i}">Edit</button></div>
@@ -1579,7 +1762,7 @@ document.addEventListener('click', async e => {
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
-    if (d.nav){ S.view = d.nav; if (d.nav === 'admin' && !S.radar) S.radar = await store.getRadar() || {}; render(); $('.main').scrollTop = 0; return; }
+    if (d.nav){ S.view = d.nav; if (d.nav === 'admin' && !S.radar) S.radar = await store.getRadar() || {}; render(); $('.main').scrollTop = 0; if (innerWidth <= 900) $('.nav button.on')?.scrollIntoView({inline:'center', block:'nearest'}); return; }
     if (d.open){ $('#gres')?.classList.add('hidden'); return openBrand(d.open); }
     if (d.chased) return quickChased(d.chased);
     if (d.snooze) return snooze(d.snooze, Number(d.days));
@@ -1603,6 +1786,15 @@ document.addEventListener('click', async e => {
         }
         break;
       case 'signout': store.signOut(); break;
+      case 'toggle-week': S.showWeek = !S.showWeek; render(); break;
+      case 'spread': spreadReview(); break;
+      case 'tidy': tidyReview(); break;
+      case 'find-one': await findOne(d.id); break;
+      case 'find-all': findAll(); break;
+      case 'find-stop': if (S.finding) S.finding.stop = true; break;
+      case 'fe-save': await saveFoundEmail(d.id); break;
+      case 'ai-ok': await aiConfirm(d.id, Number(d.ci), true); break;
+      case 'ai-no': await aiConfirm(d.id, Number(d.ci), false); break;
       case 'rtab': S.radarTab = d.v; render(); $('.main').scrollTop = 0; break;
       case 'rtype': S.f.sigType = d.v; S.radarMore = 0; render(); break;
       case 'rmore': S.radarMore = (S.radarMore || 25) + 25; render(); break;
