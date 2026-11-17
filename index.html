@@ -20,6 +20,8 @@ body{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:va
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:inherit}
 .hidden{display:none!important}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.nav button:focus-visible{outline-color:#fff}
 
 /* shell */
 .app{display:grid;grid-template-columns:220px 1fr;height:100vh}
@@ -34,6 +36,7 @@ a{color:inherit}
 .nav button.on .count{background:var(--hot)}
 .xlink{margin-top:auto;display:block;padding:9px 10px;margin-bottom:8px;border:1px solid #333;border-radius:8px;color:#cfcdc7;text-decoration:none;font-weight:500;font-size:13px}
 .xlink:hover{border-color:#666;color:#fff}
+.mobile-only{display:none}
 .pv{position:fixed;bottom:14px;right:14px;z-index:90;background:#fff;border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
 .side .me{padding:10px;border-top:1px solid #2a2a2a;font-size:12px;color:#a8a6a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .side .me b{color:#fff;font-weight:600;display:block;font-size:13px}
@@ -145,7 +148,7 @@ table.t tr.click:hover td{background:#fbfaf8}
 .contact:last-child{border-bottom:none}
 .contact .ci{flex:1;min-width:0}
 .contact .ci b{font-weight:600}
-.contact .ci .small{word-break:break-all}
+.contact .ci .small{overflow-wrap:anywhere}
 .log{border-left:2px solid var(--line);padding-left:12px;margin-left:4px}
 .log div{padding:5px 0 8px;position:relative}
 .log div:before{content:"";position:absolute;left:-17px;top:10px;width:8px;height:8px;border-radius:50%;background:#c9c5bb}
@@ -186,6 +189,7 @@ table.t tr.click:hover td{background:#fbfaf8}
   .side{flex-direction:row;align-items:center;padding:10px 12px;overflow-x:auto}
   .side .nav{flex-direction:row;margin:0 0 0 14px}
   .side .me,.logo small,.xlink{display:none}
+  .mobile-only{display:flex;flex-basis:100%;justify-content:flex-end}
   .today,.dash{grid-template-columns:1fr}
   .stats{grid-template-columns:1fr 1fr}
   .top{flex-wrap:wrap;padding:14px 16px}
@@ -329,13 +333,13 @@ async function firebaseStore(){
     signOut(){ unsubs.forEach(u => u()); unsubs = []; return A.signOut(auth); },
     listen(onBrands, onSignals, onErr){
       unsubs.push(F.onSnapshot(F.collection(db,'brands'), snap => onBrands(snap.docs.map(d => ({id:d.id, ...d.data()}))), onErr));
-      unsubs.push(F.onSnapshot(F.query(F.collection(db,'signals'), F.orderBy('createdAt','desc'), F.limit(400)),
+      unsubs.push(F.onSnapshot(F.query(F.collection(db,'signals'), F.orderBy('createdAt','desc'), F.limit(200)),
         snap => onSignals(snap.docs.map(d => ({id:d.id, ...d.data()}))), onErr));
     },
     listenEngagement(onLinks, onClicks){
-      unsubs.push(F.onSnapshot(F.query(F.collection(db,'links'), F.orderBy('createdAt','desc'), F.limit(1000)),
+      unsubs.push(F.onSnapshot(F.query(F.collection(db,'links'), F.orderBy('createdAt','desc'), F.limit(400)),
         snap => onLinks(snap.docs.map(d => ({id:d.id, ...d.data()}))), e => console.warn('links', e.code)));
-      unsubs.push(F.onSnapshot(F.query(F.collection(db,'clicks'), F.orderBy('at','desc'), F.limit(1000)),
+      unsubs.push(F.onSnapshot(F.query(F.collection(db,'clicks'), F.orderBy('at','desc'), F.limit(400)),
         snap => onClicks(snap.docs.map(d => { const x = d.data(); return {id:d.id, link:x.link, ua:x.ua || '', at: x.at && x.at.toDate ? x.at.toDate().toISOString() : new Date().toISOString()}; })),
         e => console.warn('clicks', e.code)));
     },
@@ -726,6 +730,7 @@ function render(){
         <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input id="gsearch" placeholder="Find a brand or contact" autocomplete="off"><div id="gres" class="results hidden"></div></div>
         <button class="btn dark" data-act="new-brand">+ Add brand</button>
+        <span class="mobile-only" style="gap:6px"><a class="btn sm ghost" href="${STUDIO_REPORTING_URL}" target="_blank" rel="noopener">Studio Reporting ↗</a><button class="btn sm ghost" data-act="signout">Sign out</button></span>
       </div>
       <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, clients:vClients, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
     </main>
@@ -814,7 +819,7 @@ function vToday(){
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card">
         <div class="panel-h"><h3>Fresh on the radar</h3><button class="btn sm ghost" data-nav="radar">See all</button></div>
-        ${sigs.length ? sigs.map(s => sigRow(s, true)).join('') : '<div class="empty">No new signals. The radar scans every morning at 7am.</div>'}
+        ${sigs.length ? sigs.map(s => sigRow(s, true)).join('') : `<div class="empty">${S.signals.length ? 'No new signals. The radar scans every morning at 7am.' : "The news radar isn't switched on yet."}</div>`}
       </div>
       <div class="card">
         <div class="panel-h"><h3>Ready to contact</h3><span class="small muted">${needsContact} more need a contact</span></div>
@@ -932,6 +937,7 @@ function vRadar(){
     <button class="btn" data-act="scan" ${S.scanning?'disabled':''}>${S.scanning ? 'Scanning…' : 'Scan now'}</button>
   </div>
   <div class="small muted" style="margin:-6px 0 12px">Scans UK fashion, beauty, sport and retail news every morning for new marketing and ecommerce hires, rebrands, launches, funding, store openings and agency reviews. Higher scores are stronger reasons to get in touch.</div>
+  ${!S.signals.length ? `<div class="clash soft" style="margin-bottom:14px"><b>The automatic news scan isn't switched on yet.</b> It needs the Firebase Blaze plan and a one-off deploy of the radar (see the setup guide). Until then this page stays empty; everything else works.</div>` : ''}
   <div class="card">${list.length ? list.map(s => sigRow(s)).join('') : '<div class="empty">Nothing here yet.</div>'}</div>`;
 }
 
@@ -1342,7 +1348,10 @@ document.addEventListener('click', async e => {
     if (d.cp) return composeAction(d.cp);
     switch (d.act){
       case 'signin':
-        try { await store.signIn(); } catch (err){ if (err.code !== 'auth/popup-closed-by-user') renderLogin(err.message); }
+        try { await store.signIn(); } catch (err){
+          if (err.code === 'auth/popup-blocked') renderLogin('Your browser blocked the Google sign-in window. Allow pop-ups for this site, then click Sign in again.');
+          else if (!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(err.code)) renderLogin(err.message);
+        }
         break;
       case 'signout': store.signOut(); break;
       case 'close': closeDrawer(); break;
@@ -1386,7 +1395,7 @@ document.addEventListener('click', async e => {
       case 'scan':
         S.scanning = true; render();
         try { const r = await store.runScan(); toast(`Scan done: ${r.added} new signal${r.added===1?'':'s'}`); }
-        catch (err){ toast('Scan failed: ' + (err.message || err)); }
+        catch (err){ toast(/not-found|internal|unavailable/.test(err.code || '') ? "The radar isn't switched on yet. It needs the Firebase Blaze plan and a one-off deploy." : 'Scan failed: ' + (err.message || err)); }
         S.scanning = false; render(); break;
       case 'import': {
         const file = $('#seedfile').files[0]; if (!file){ toast('Choose seed.json first'); break; }
