@@ -51,6 +51,14 @@ service cloud.firestore {
       allow read, write: if isTeam();
     }
 
+    // Client directory: current and lapsed clients with their contacts
+    match /clients/{id} {
+      allow read, delete: if isTeam();
+      allow create, update: if isTeam()
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && (!('contacts' in request.resource.data) || (request.resource.data.contacts is list && request.resource.data.contacts.size() <= 60));
+    }
+
     // Tracked portfolio links. Anyone holding a link id can look up where it goes
     // (that is how go.html forwards them), but nobody outside the team can list them.
     // Links may only point at Google Drive, so they can't be used as an open redirect.

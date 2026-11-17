@@ -158,6 +158,15 @@ table.t tr.click:hover td{background:#fbfaf8}
 .modal .box{background:#fff;border-radius:12px;width:min(520px,92vw);padding:20px 22px;box-shadow:var(--shadow)}
 .modal h3{margin:0 0 14px}
 .modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.clash{background:var(--hot-bg);border:1px solid #f3c9b3;color:#7c2d12;border-radius:var(--r);padding:12px 14px;font-size:13px}
+.clash.soft{background:var(--blue-bg);border-color:#c9d6f7;color:#1e3a8a}
+.clash a{color:inherit;font-weight:600}
+.role{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;background:var(--line2);color:var(--ink2)}
+.role.Main{background:var(--ink);color:#fff}.role.Senior{background:var(--blue-bg);color:var(--blue)}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.ccard{padding:14px 16px;cursor:pointer}.ccard:hover{border-color:#cfcbc2}
+.ccard h4{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ccard .p{font-size:12px;color:var(--ink2);padding:2px 0;display:flex;gap:6px;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .reasons{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .reasons label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
 .hotrow b{font-weight:600}
@@ -288,8 +297,8 @@ function toast(msg){
 // ---------- state ----------
 const S = {
   user:null, isAdmin:false, brands:[], signals:[], view:'today', open:null, editingContact:null,
-  f:{ sector:'', stage:'', prio:'', q:'', sort:'nextFollowUp', dir:1, showPaused:false, sigType:'', sigStatus:'new' },
-  radar:null, scanning:false, links:[], clicks:[]
+  f:{ sector:'', stage:'', prio:'', q:'', sort:'nextFollowUp', dir:1, showPaused:false, sigType:'', sigStatus:'new', cstatus:'' },
+  radar:null, scanning:false, links:[], clicks:[], clients:[], openClient:null, editingCC:null
 };
 const byId = id => S.brands.find(b => b.id === id);
 
@@ -329,6 +338,22 @@ async function firebaseStore(){
       unsubs.push(F.onSnapshot(F.query(F.collection(db,'clicks'), F.orderBy('at','desc'), F.limit(1000)),
         snap => onClicks(snap.docs.map(d => { const x = d.data(); return {id:d.id, link:x.link, ua:x.ua || '', at: x.at && x.at.toDate ? x.at.toDate().toISOString() : new Date().toISOString()}; })),
         e => console.warn('clicks', e.code)));
+    },
+    listenClients(onClients){
+      unsubs.push(F.onSnapshot(F.collection(db,'clients'), snap => onClients(snap.docs.map(d => ({id:d.id, ...d.data()}))), e => console.warn('clients', e.code)));
+    },
+    updateClient(id, patch){ return F.updateDoc(F.doc(db,'clients',id), {...patch, updatedAt: now()}); },
+    async createClient(c){
+      if ((await F.getDoc(F.doc(db,'clients',c.id))).exists()) c.id = c.id + '-' + uid().slice(0,4);
+      const {id, ...rest} = c; await F.setDoc(F.doc(db,'clients',id), {...rest, createdAt: now(), updatedAt: now()}); return id;
+    },
+    removeClient(id){ return F.deleteDoc(F.doc(db,'clients',id)); },
+    async importClients(list, overwrite){
+      const existing = new Set(S.clients.map(c => c.id));
+      let written = 0, skipped = 0; const batch = F.writeBatch(db);
+      list.forEach(({id, ...rest}) => { if (existing.has(id) && !overwrite){ skipped++; return; } batch.set(F.doc(db,'clients',id), {...rest, createdAt: now(), updatedAt: now()}); written++; });
+      if (written) await batch.commit();
+      return {written, skipped};
     },
     async createLinks(list){
       const batch = F.writeBatch(db);
@@ -382,6 +407,7 @@ async function demoStore(){
   let brands = seed.brands.map(b => ({...b}));
   let signals = (seed.signals || []).map(s => ({...s}));
   let links = (seed.links || []).map(l => ({...l})), clicks = (seed.clicks || []).map(c => ({...c}));
+  let clients = (seed.clients || []).map(c => ({...c})), ocl;
   let ob, os, ol, oc;
   const emit = () => { ob && ob(brands.map(b => ({...b}))); os && os(signals.map(s => ({...s}))); ol && ol(links.map(l => ({...l}))); oc && oc(clicks.map(c => ({...c}))); };
   return {
@@ -389,6 +415,11 @@ async function demoStore(){
     signIn(){}, signOut(){ location.reload(); },
     listen(a, b){ ob = a; os = b; emit(); },
     listenEngagement(a, b){ ol = a; oc = b; emit(); },
+    listenClients(a){ ocl = a; ocl(clients.map(c => ({...c}))); },
+    async updateClient(id, patch){ clients = clients.map(c => c.id === id ? {...c, ...patch} : c); ocl(clients.map(c => ({...c}))); },
+    async createClient(c){ clients.push(c); ocl(clients.map(c => ({...c}))); return c.id; },
+    async removeClient(id){ clients = clients.filter(c => c.id !== id); ocl(clients.map(c => ({...c}))); },
+    async importClients(list){ return {written:0, skipped:list.length}; },
     async createLinks(list){ links = [...list, ...links]; emit(); },
     async markSent(ids){ links = links.map(l => ids.includes(l.id) ? {...l, sent:true} : l); emit(); },
     async update(id, patch, entry){ brands = brands.map(b => b.id === id ? {...b, ...patch, log: entry ? [...(b.log||[]), entry] : b.log} : b); emit(); },
@@ -505,6 +536,7 @@ function renderCompose(){
         <div><label class="l">Portfolio</label><select class="f" id="cp-deck"><option value="">No portfolio</option>${DECKS.map(d => `<option value="${d.key}" ${C.deck===d.key?'selected':''}>${esc(d.name)}${d.key===sug?' (suggested)':''}</option>`).join('')}</select></div>
       </div>
       <label class="small" style="display:block;margin:10px 0 2px"><input type="checkbox" id="cp-reel" ${C.reel?'checked':''}> Include the showreel</label>
+      ${clientMatch(b) ? clashBanner(b) + (clientMatch(b).current ? `<label class="small" style="display:block;margin:4px 0 8px"><input type="checkbox" id="cp-ok"> I've checked with the account lead</label>` : '') : ''}
       ${hookFor(b) ? `<div class="small" style="margin:6px 0;color:var(--blue)">Opens with the radar story: ${esc(b.lastSignal.title)}</div>` : ''}
       <label class="l" style="margin-top:10px">Subject</label><input class="f" id="cp-subject" value="${esc(C.subject)}">
       <label class="l" style="margin-top:10px">Message</label><textarea class="f" id="cp-body" rows="11">${esc(C.body)}</textarea>
@@ -531,7 +563,10 @@ async function composeAction(act){
   const C = S.compose; if (!C) return;
   const b = byId(C.brandId);
   if (act === 'cancel'){ S.compose = null; renderCompose(); return; }
-  if (C.step === 1){ C.subject = $('#cp-subject').value; C.body = $('#cp-body').value; }
+  if (C.step === 1){
+    if ((act === 'open' || act === 'copy') && clientMatch(b)?.current && !$('#cp-ok')?.checked){ toast(`${b.name} is a current client. Tick the box once you've checked with the account lead.`); return; }
+    C.subject = $('#cp-subject').value; C.body = $('#cp-body').value;
+  }
   const c = b.contacts[C.ci];
   if (act === 'copy'){
     try { await navigator.clipboard.writeText(`To: ${c.email}\nSubject: ${C.subject}\n\n${C.body}`); toast('Copied'); } catch { toast('Copy blocked by the browser'); }
@@ -566,6 +601,48 @@ async function saveLinks(C, b, c){
   C.saved = list.map(l => l.id);
 }
 
+// ---------- client directory + clash check ----------
+const GENERIC_DOMAINS = new Set(['gmail.com','googlemail.com','outlook.com','hotmail.com','hotmail.co.uk','live.com','me.com','mac.com','icloud.com','yahoo.com','yahoo.co.uk','aol.com']);
+const normName = n => (n || '').toLowerCase().replace(/[&+]/g, ' and ').replace(/\b(the|ltd|limited|london|uk|co|company|group|inc)\b/g, ' ').replace(/[^a-z0-9]/g, '');
+const domainOf = e => (e || '').split('@')[1]?.toLowerCase() || '';
+let clashCache = {key: '', map: new Map()};
+function clientIndex(){
+  const key = S.clients.length + '|' + S.clients.map(c => c.updatedAt || '').join('').length;
+  if (clashCache.key === key) return clashCache;
+  const names = new Map(), domains = new Map(), emails = new Map();
+  S.clients.forEach(c => {
+    if (normName(c.name)) names.set(normName(c.name), c);
+    (c.contacts || []).forEach(p => {
+      if (!p.email) return;
+      emails.set(p.email.toLowerCase(), {c, p});
+      const d = domainOf(p.email); if (d && !GENERIC_DOMAINS.has(d) && !domains.has(d)) domains.set(d, c);
+    });
+  });
+  return clashCache = {key, names, domains, emails};
+}
+// Is this pipeline brand already a client? Returns {client, why, current} or null.
+function clientMatch(b){
+  if (!b || !S.clients.length) return null;
+  const I = clientIndex();
+  const byName = I.names.get(normName(b.name));
+  if (byName) return {client: byName, why: 'same name', current: byName.status !== 'Lapsed'};
+  for (const p of (b.contacts || [])){
+    const e = I.emails.get((p.email || '').toLowerCase());
+    if (e) return {client: e.c, why: `${p.name || p.email} is a contact at ${e.c.name}`, current: e.c.status !== 'Lapsed'};
+    const d = I.domains.get(domainOf(p.email));
+    if (d) return {client: d, why: `${domainOf(p.email)} email, same as ${d.name}`, current: d.status !== 'Lapsed'};
+  }
+  return null;
+}
+const clashChip = b => { const m = clientMatch(b); return !m ? '' : m.current ? '<span class="chip hot" title="Already a client">Client</span>' : '<span class="chip blue" title="Former client">Former client</span>'; };
+function clashBanner(b){
+  const m = clientMatch(b); if (!m) return '';
+  const main = (m.client.contacts || []).find(p => p.role === 'Main');
+  return m.current
+    ? `<div class="clash"><b>${esc(m.client.name)} is a current client.</b> Matched on ${esc(m.why)}. Check with the account lead before any outreach${main ? ` (main contact: ${esc(main.name || main.email)})` : ''}. <a href="#" data-open-client="${m.client.id}">Open client</a></div>`
+    : `<div class="clash soft"><b>Former client:</b> ${esc(m.client.name)} (${esc(m.why)}). A warm win-back rather than a cold intro. <a href="#" data-open-client="${m.client.id}">Open client</a></div>`;
+}
+
 // ---------- engagement ----------
 function opens(){
   const L = new Map(S.links.map(l => [l.id, l]));
@@ -586,9 +663,9 @@ function render(){
   if (!S.user){ return renderLogin(); }
   const dueCount = S.brands.filter(b => b.nextFollowUp && b.nextFollowUp <= today() && !['Won','Lost','Paused'].includes(b.stage)).length;
   const newSig = S.signals.filter(s => s.status === 'new').length;
-  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['radar','Radar',newSig],['dashboard','Dashboard']];
+  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['clients','Clients'],['radar','Radar',newSig],['dashboard','Dashboard']];
   if (S.isAdmin) navs.push(['admin','Admin']);
-  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
+  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', clients:'Client directory', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
   $('#root').innerHTML = `
   <div class="app">
     <aside class="side">
@@ -604,7 +681,7 @@ function render(){
           <input id="gsearch" placeholder="Find a brand or contact" autocomplete="off"><div id="gres" class="results hidden"></div></div>
         <button class="btn dark" data-act="new-brand">+ Add brand</button>
       </div>
-      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
+      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, clients:vClients, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
     </main>
   </div>`;
   if (S.view === 'pipeline') wireBoard();
@@ -663,7 +740,7 @@ function vToday(){
   const overdue = due.filter(b => b.nextFollowUp < t);
   const soon = live.filter(b => b.nextFollowUp && b.nextFollowUp > t && b.nextFollowUp <= wk).sort((a,b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
   const pr = {High:0, Medium:1, Low:2};
-  const ready = S.brands.filter(b => b.stage === 'Prospect' && (b.contacts||[]).some(c => c.email))
+  const ready = S.brands.filter(b => b.stage === 'Prospect' && (b.contacts||[]).some(c => c.email) && !clientMatch(b)?.current)
     .sort((a,b) => (pr[a.priority]??1) - (pr[b.priority]??1) || a.name.localeCompare(b.name)).slice(0, 6);
   const needsContact = S.brands.filter(b => b.stage === 'Prospect' && !(b.contacts||[]).some(c => c.email)).length;
   const sigs = S.signals.filter(s => s.status === 'new').sort((a,b) => b.score - a.score).slice(0, 5);
@@ -729,7 +806,7 @@ function vPipeline(){
     return `<div class="col" data-col="${st}">
       <div class="col-h">${st}<span>${items.length}</span></div>
       ${items.slice(0, cap).map(b => `<div class="bc" draggable="true" data-card="${b.id}">
-        <b>${esc(b.name)}</b>
+        <b>${esc(b.name)} ${clashChip(b)}</b>
         <div class="meta"><span class="chip">${esc(b.sector)}</span>${['Won','Lost','Paused','Prospect'].includes(st) ? prioChip(b.priority) : dueLabel(b.nextFollowUp)}</div>
       </div>`).join('')}
       ${items.length > cap ? `<div class="more">+${items.length - cap} more, use Brands view</div>` : ''}
@@ -760,7 +837,7 @@ function vBrands(){
     <tbody>${list.map(b => {
       const flags = (b.contacts||[]).filter(c => c.flag).length;
       return `<tr class="click" data-open="${b.id}">
-      <td><b>${esc(b.name)}</b></td><td>${esc(b.sector)}</td><td>${stageChip(b.stage)}</td><td>${prioChip(b.priority) || '<span class="muted small">Medium</span>'}</td>
+      <td><b>${esc(b.name)}</b> ${clashChip(b)}</td><td>${esc(b.sector)}</td><td>${stageChip(b.stage)}</td><td>${prioChip(b.priority) || '<span class="muted small">Medium</span>'}</td>
       <td>${(b.contacts||[]).length || '<span class="chip warn">None</span>'} ${flags ? `<span class="chip warn" title="Contact details to check">${flags} to check</span>` : ''}</td>
       <td class="small">${b.lastContact ? fmtD(b.lastContact) : '<span class="muted">Never</span>'}</td>
       <td>${['Won','Lost','Paused'].includes(b.stage) ? '' : dueLabel(b.nextFollowUp)}</td></tr>`;}).join('')}</tbody></table>
@@ -770,6 +847,9 @@ function vBrands(){
 
 // ---------- Radar ----------
 const TYPE_CLASS = {Appointment:'hot', Agency:'hot', Rebrand:'blue', Funding:'ok', Launch:'blue', Expansion:'ok'};
+function clientInTitle(t){
+  return S.clients.find(c => c.name.length >= 4 && new RegExp(`\\b${c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t || ''));
+}
 function sigRow(s, compact){
   const sc = s.score >= 7 ? 's-hi' : s.score >= 5 ? 's-mid' : '';
   const linked = s.brandId && byId(s.brandId);
@@ -780,6 +860,7 @@ function sigRow(s, compact){
       <div class="line">
         <span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>
         ${linked ? `<span class="chip dark" data-open="${s.brandId}" style="cursor:pointer">In pipeline: ${esc(linked.name)} (${esc(linked.stage)})</span>` : ''}
+        ${clientInTitle(s.title) ? `<span class="chip hot" data-open-client="${clientInTitle(s.title).id}" style="cursor:pointer">Client news: ${esc(clientInTitle(s.title).name)}</span>` : ''}
         ${s.sector ? `<span class="chip">${esc(s.sector)}</span>` : ''}
         <span class="small muted">${esc(s.source || '')}${s.published ? ' · ' + fmtD(s.published.slice(0,10)) : ''}</span>
       </div>
@@ -913,9 +994,9 @@ function vAdmin(){
   const r = S.radar || {};
   return `<div style="display:grid;gap:18px;max-width:820px">
     <div class="card"><div class="panel-h"><h3>Import tracker data</h3></div><div style="padding:16px">
-      <p class="small muted" style="margin-top:0">Load the cleaned <b>seed.json</b> made from the outreach tracker. Brands already in the app are skipped unless you tick overwrite.</p>
+      <p class="small muted" style="margin-top:0">Load <b>seed.json</b> (outreach tracker) or <b>clients.json</b> (client directory). Anything already in the app is skipped unless you tick overwrite.</p>
       <input type="file" id="seedfile" accept=".json" class="f" style="margin-bottom:10px">
-      <label class="small"><input type="checkbox" id="seedover"> Overwrite brands that already exist</label>
+      <label class="small"><input type="checkbox" id="seedover"> Overwrite records that already exist</label>
       <div style="margin-top:12px"><button class="btn dark" data-act="import">Import</button></div>
     </div></div>
     <div class="card"><div class="panel-h"><h3>Export</h3></div><div style="padding:16px">
@@ -948,11 +1029,134 @@ function engagementLine(b){
   const last = O.sort((x, y) => y.at.localeCompare(x.at))[0];
   return `<div class="small" style="margin-top:10px">Portfolio links sent: <b>${L.length}</b> · opened: <b>${opened}</b>${last ? ` · last opened by ${esc(firstName(last.l.contact))} ${ago(last.at)}` : ''}</div>`;
 }
-function openBrand(id){ S.open = id; S.editingContact = null; renderDrawer(); }
-function closeDrawer(){ S.open = null; renderDrawer(); }
+// ===================================================================
+//  Client directory
+// ===================================================================
+const ROLES = ['Main','CC','Senior','Other'];
+function vClients(){
+  const q = S.f.q.toLowerCase();
+  const st = S.f.cstatus || '';
+  const list = S.clients.filter(c => (!st || (c.status || 'Current') === st) &&
+      (!q || c.name.toLowerCase().includes(q) || (c.contacts||[]).some(p => ((p.name||'') + ' ' + (p.email||'')).toLowerCase().includes(q))))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const clashes = S.brands.filter(b => clientMatch(b)?.current);
+  return `<div class="filters">
+      <input id="fq" placeholder="Search clients or contacts…" value="${esc(S.f.q)}" style="width:260px">
+      <select data-f="cstatus"><option value="">All clients</option><option ${st==='Current'?'selected':''}>Current</option><option ${st==='Lapsed'?'selected':''}>Lapsed</option></select>
+      <span style="flex:1"></span>
+      <button class="btn" data-ce="new">+ Add client</button>
+    </div>
+    ${clashes.length ? `<div class="clash" style="margin-bottom:16px"><b>${clashes.length} pipeline ${clashes.length === 1 ? 'brand is' : 'brands are'} already ${clashes.length === 1 ? 'a client' : 'clients'}:</b> ${clashes.map(b => `<a href="#" data-open="${b.id}">${esc(b.name)}</a>`).join(', ')}. They're flagged everywhere and kept out of "Ready to contact".</div>` : ''}
+    ${S.clients.length ? '' : '<div class="card empty">No clients yet. Import clients.json from Admin.</div>'}
+    <div class="cgrid">${list.map(c => {
+      const ps = (c.contacts || []).filter(p => p.role === 'Main').slice(0, 2);
+      const more = (c.contacts || []).length - ps.length;
+      return `<div class="card ccard" data-open-client="${c.id}">
+        <h4>${esc(c.name)} ${c.status === 'Lapsed' ? '<span class="chip blue">Lapsed</span>' : ''}</h4>
+        ${ps.map(p => `<div class="p"><span class="role Main">Main</span>${esc(p.name || p.email)}${p.email ? ` <span class="muted">${esc(p.email)}</span>` : ''}</div>`).join('') || '<div class="p muted">No main contact</div>'}
+        ${more > 0 ? `<div class="p muted">+ ${more} more contact${more === 1 ? '' : 's'}</div>` : ''}
+      </div>`; }).join('')}</div>
+    <div class="small muted" style="margin-top:10px">${list.length} clients · ${list.reduce((n, c) => n + (c.contacts||[]).length, 0)} contacts</div>`;
+}
+
+function renderClientDrawer(){
+  const L = $('#layer');
+  const c = S.clients.find(x => x.id === S.openClient);
+  if (!c){ L.innerHTML = ''; return; }
+  const keepScroll = L.querySelector('.dbody')?.scrollTop || 0;
+  const linked = S.brands.filter(b => clientMatch(b)?.client.id === c.id);
+  const ec = S.editingCC;
+  const contacts = [...(c.contacts || [])].map((p, i) => ({p, i})).sort((a, b) => ROLES.indexOf(a.p.role) - ROLES.indexOf(b.p.role));
+  L.innerHTML = `<div class="scrim" data-act="close"></div>
+  <div class="drawer">
+    <div class="dh">
+      <div style="flex:1"><h2>${esc(c.name)}</h2>
+        <div style="margin-top:6px;display:flex;gap:6px"><span class="chip ${c.status === 'Lapsed' ? 'blue' : 'ok'}">${c.status === 'Lapsed' ? 'Lapsed client' : 'Current client'}</span></div></div>
+      <button class="btn ghost" data-act="close">✕</button>
+    </div>
+    <div class="dbody">
+      ${linked.length ? `<div class="clash ${c.status === 'Lapsed' ? 'soft' : ''}">Also in the new business pipeline: ${linked.map(b => `<a href="#" data-open="${b.id}">${esc(b.name)}</a> (${esc(b.stage)})`).join(', ')}</div>` : ''}
+      <div class="sec"><h4 style="display:flex;justify-content:space-between">Contacts <button class="btn sm" data-cc-edit="new">+ Add</button></h4>
+        ${contacts.map(({p, i}) => ec === i ? clientContactForm(p) : `<div class="contact">
+          <div class="ci"><span class="role ${esc(p.role)}">${esc(p.role)}</span> <b>${esc(p.name || 'Unnamed')}</b> ${p.note ? `<span class="muted small">${esc(p.note)}</span>` : ''}
+            <div class="small">${p.email ? esc(p.email) : '<span class="muted">No email</span>'}${p.phone ? ' · ' + esc(p.phone) : ''}</div></div>
+          <div style="display:flex;gap:4px">${p.email ? `<button class="btn sm" data-ce="copy" data-v="${esc(p.email)}">Copy email</button>` : ''}<button class="btn sm ghost" data-cc-edit="${i}">Edit</button></div>
+        </div>`).join('')}
+        ${ec === 'new' ? clientContactForm({role: 'Main'}) : ''}
+        ${!contacts.length && ec !== 'new' ? '<div class="muted small">No contacts yet.</div>' : ''}
+      </div>
+      <div class="sec"><h4>Details</h4>
+        <div class="grid2">
+          <div><label class="l">Name</label><input class="f" data-cf="name" value="${esc(c.name)}"></div>
+          <div><label class="l">Status</label><select class="f" data-cf="status"><option ${c.status !== 'Lapsed' ? 'selected' : ''}>Current</option><option ${c.status === 'Lapsed' ? 'selected' : ''}>Lapsed</option></select></div>
+        </div>
+        <div style="margin-top:12px"><label class="l">Notes</label><textarea class="f" data-cf="notes" rows="4" placeholder="Addresses, delivery details, preferences…">${esc(c.notes)}</textarea></div>
+        ${c.status === 'Lapsed' && !linked.length ? `<div style="margin-top:12px"><button class="btn dark" data-ce="winback">Add to pipeline as a win-back</button></div>` : ''}
+      </div>
+      <div style="text-align:right"><button class="btn sm ghost danger" data-ce="delete">Delete client</button></div>
+    </div>
+  </div>`;
+  L.querySelector('.dbody').scrollTop = keepScroll;
+}
+function clientContactForm(p){
+  return `<div class="contact" style="display:block;background:#fbfaf8;margin:6px -8px;padding:12px 8px;border-radius:8px">
+    <div class="grid2">
+      <div><label class="l">Name</label><input class="f" id="cc-name" value="${esc(p.name)}"></div>
+      <div><label class="l">Role</label><select class="f" id="cc-role">${ROLES.map(r => `<option ${p.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+      <div><label class="l">Email</label><input class="f" id="cc-email" value="${esc(p.email)}"></div>
+      <div><label class="l">Phone</label><input class="f" id="cc-phone" value="${esc(p.phone)}"></div>
+      <div style="grid-column:1/-1"><label class="l">Note</label><input class="f" id="cc-note" value="${esc(p.note)}" placeholder="e.g. For model ecom, If needed"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn sm dark" data-ce="save-contact">Save</button><button class="btn sm" data-cc-edit="-1">Cancel</button>
+      <span style="flex:1"></span>${S.editingCC !== 'new' ? '<button class="btn sm ghost danger" data-ce="del-contact">Remove</button>' : ''}
+    </div></div>`;
+}
+async function clientAction(act, t){
+  const c = S.clients.find(x => x.id === S.openClient);
+  if (act === 'new'){
+    modal(`<h3>Add a client</h3><label class="l">Client name</label><input class="f" id="m-name">`, async () => {
+      const name = $('#m-name').value.trim(); if (!name) return false;
+      if (S.clients.some(x => normName(x.name) === normName(name))){ toast(`${name} is already in the directory`); return false; }
+      const id = await store.createClient({id: slug(name), name, status: 'Current', contacts: [], notes: ''});
+      setTimeout(() => { S.openClient = id; S.editingCC = 'new'; renderDrawer(); }, 200);
+    }, 'Add client');
+    return;
+  }
+  if (!c) return;
+  if (act === 'copy'){ try { await navigator.clipboard.writeText(t.dataset.v); toast('Email copied'); } catch { toast(t.dataset.v); } return; }
+  if (act === 'save-contact'){
+    const email = $('#cc-email').value.trim().toLowerCase();
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('That email doesn\'t look right'); return; }
+    const p = {name: $('#cc-name').value.trim(), role: $('#cc-role').value, email, phone: $('#cc-phone').value.trim(), note: $('#cc-note').value.trim()};
+    if (!p.name && !p.email){ toast('Add a name or email'); return; }
+    const contacts = [...(c.contacts || [])];
+    if (S.editingCC === 'new') contacts.push(p); else contacts[S.editingCC] = p;
+    S.editingCC = null; await store.updateClient(c.id, {contacts}); return;
+  }
+  if (act === 'del-contact'){
+    const p = c.contacts[S.editingCC]; if (!confirm(`Remove ${p.name || p.email}?`)) return;
+    const contacts = c.contacts.filter((_, i) => i !== S.editingCC); S.editingCC = null;
+    await store.updateClient(c.id, {contacts}); return;
+  }
+  if (act === 'delete'){
+    if (!confirm(`Delete ${c.name} and its contacts from the client directory? This can't be undone.`)) return;
+    await store.removeClient(c.id); closeDrawer(); toast('Deleted'); return;
+  }
+  if (act === 'winback'){
+    const id = await store.create({...newBrand({name: c.name, sector: 'Other', priority: 'High', nextFollowUp: today(),
+      notes: `Win-back: former client.${c.notes ? '\n' + c.notes : ''}`, log: [entry('Note', 'Added from the client directory as a win-back')]}),
+      contacts: (c.contacts || []).map(p => ({name: p.name || '', title: p.role === 'Main' ? 'Main contact (as client)' : p.note || '', email: p.email || '', phone: p.phone || '', linkedin: '', flag: ''}))});
+    toast(`${c.name} added to the pipeline`); setTimeout(() => openBrand(id), 200);
+  }
+}
+
+function openBrand(id){ S.open = id; S.openClient = null; S.editingContact = null; renderDrawer(); }
+function closeDrawer(){ S.open = null; S.openClient = null; renderDrawer(); }
 
 function renderDrawer(){
   const L = $('#layer');
+  if (S.openClient) return renderClientDrawer();
   const b = S.open && byId(S.open);
   if (!b){ L.innerHTML = ''; return; }
   const keepScroll = L.querySelector('.dbody')?.scrollTop || 0;
@@ -968,6 +1172,7 @@ function renderDrawer(){
       <button class="btn ghost" data-act="close">✕</button>
     </div>
     <div class="dbody">
+      ${clashBanner(b)}
       <div class="sec"><h4>Stage</h4>
         <div class="stagebar">${STAGES.map(s => `<button data-stage="${s}" class="${b.stage===s?'on':''}">${s}</button>`).join('')}</div>
         <div class="grid2" style="margin-top:14px">
@@ -1071,7 +1276,7 @@ function modal(html, onOk, okLabel = 'Save'){
 //  Events
 // ===================================================================
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-edit-contact],[data-compose],[data-cp]');
+  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit]');
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
@@ -1084,6 +1289,9 @@ document.addEventListener('click', async e => {
     if (d.sigAdd) return sigAdd(d.sigAdd);
     if (d.sigDismiss){ await store.updateSignal(d.sigDismiss, {status:'dismissed', handledBy: me(), handledAt: new Date().toISOString()}); return; }
     if (d.editContact !== undefined){ S.editingContact = Number(d.editContact); return renderDrawer(); }
+    if (d.openClient){ e.preventDefault(); $('#gres')?.classList.add('hidden'); S.open = null; S.openClient = d.openClient; S.editingCC = null; return renderDrawer(); }
+    if (d.ccEdit !== undefined){ S.editingCC = d.ccEdit === 'new' ? 'new' : Number(d.ccEdit) < 0 ? null : Number(d.ccEdit); return renderDrawer(); }
+    if (d.ce) return clientAction(d.ce, t);
     if (d.compose){ return openCompose(d.compose, d.ci != null ? Number(d.ci) : null); }
     if (d.cp) return composeAction(d.cp);
     switch (d.act){
@@ -1122,6 +1330,8 @@ document.addEventListener('click', async e => {
           </div>`, async () => {
             const name = $('#m-name').value.trim(); if (!name) return false;
             const dup = S.brands.find(b => b.name.toLowerCase() === name.toLowerCase());
+            const cl = clientMatch({name, contacts: []});
+            if (cl?.current && !confirm(`${cl.client.name} is already a current client. Add it to the new business pipeline anyway?`)) return false;
             if (dup){ toast(`${dup.name} is already in the app`); openBrand(dup.id); return; }
             const id = await store.create(newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, log:[entry('Note','Brand added')]}));
             setTimeout(() => openBrand(id), 200);
@@ -1135,11 +1345,14 @@ document.addEventListener('click', async e => {
       case 'import': {
         const file = $('#seedfile').files[0]; if (!file){ toast('Choose seed.json first'); break; }
         const data = JSON.parse(await file.text());
-        const list = data.brands || data;
-        if (!confirm(`Import ${list.length} brands?`)) break;
+        const list = data.brands || (Array.isArray(data) ? data : []), cl = data.clients || [];
+        if (!list.length && !cl.length){ toast('Nothing to import in that file'); break; }
+        if (!confirm(`Import ${[list.length ? list.length + ' brands' : '', cl.length ? cl.length + ' clients' : ''].filter(Boolean).join(' and ')}?`)) break;
         t.disabled = true; t.textContent = 'Importing…';
-        const r = await store.importBrands(list, $('#seedover').checked);
-        toast(`Imported ${r.written}, skipped ${r.skipped}`); t.disabled = false; t.textContent = 'Import'; break;
+        const over = $('#seedover').checked, msgs = [];
+        if (list.length){ const r = await store.importBrands(list, over); msgs.push(`${r.written} brands imported, ${r.skipped} skipped`); }
+        if (cl.length){ const r = await store.importClients(cl, over); msgs.push(`${r.written} clients imported, ${r.skipped} skipped`); }
+        toast(msgs.join('; ')); t.disabled = false; t.textContent = 'Import'; break;
       }
       case 'export': exportCsv(); break;
       case 'save-radar': {
@@ -1161,6 +1374,12 @@ document.addEventListener('change', async e => {
     renderCompose(); return;
   }
   if (t.dataset.f){ S.f[t.dataset.f] = t.value; render(); return; }
+  if (t.dataset.cf && S.openClient){
+    const c = S.clients.find(x => x.id === S.openClient); const k = t.dataset.cf; let v = t.value;
+    if (k === 'name'){ v = v.trim(); if (!v) return; }
+    if ((c[k] || '') !== v) await store.updateClient(c.id, {[k]: v});
+    return;
+  }
   if (t.dataset.bf && S.open){
     const b = byId(S.open); const k = t.dataset.bf; let v = t.value;
     if (k === 'name'){ v = v.trim(); if (!v) return render(); }
@@ -1180,12 +1399,16 @@ document.addEventListener('input', e => {
       if (b.name.toLowerCase().includes(q)) hits.push(`<div data-open="${b.id}"><b>${esc(b.name)}</b> <span class="small muted">${esc(b.stage)} · ${esc(b.sector)}</span></div>`);
       (b.contacts||[]).forEach(c => { if ((c.name + ' ' + c.email).toLowerCase().includes(q)) hits.push(`<div data-open="${b.id}">${esc(c.name)} <span class="small muted">${esc(c.title)} at ${esc(b.name)}</span></div>`); });
     });
-    box.innerHTML = hits.slice(0, 12).join('') || '<div class="muted">No matches</div>';
+    S.clients.forEach(c => {
+      if (c.name.toLowerCase().includes(q)) hits.push(`<div data-open-client="${c.id}"><b>${esc(c.name)}</b> <span class="small muted">Client</span></div>`);
+      (c.contacts||[]).forEach(p => { if (((p.name||'') + ' ' + (p.email||'')).toLowerCase().includes(q)) hits.push(`<div data-open-client="${c.id}">${esc(p.name || p.email)} <span class="small muted">${esc(p.role)} contact at ${esc(c.name)} (client)</span></div>`); });
+    });
+    box.innerHTML = hits.slice(0, 14).join('') || '<div class="muted">No matches</div>';
     box.classList.remove('hidden');
   }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape'){ if (document.querySelector('.modal')){ document.querySelector('.modal').remove(); S.compose = null; } else if (S.open) closeDrawer(); }
+  if (e.key === 'Escape'){ if (document.querySelector('.modal')){ document.querySelector('.modal').remove(); S.compose = null; } else if (S.open || S.openClient) closeDrawer(); }
   if (e.key === 'Enter' && e.target.id === 't-text'){ document.querySelector('[data-act="log"]')?.click(); }
 });
 
@@ -1230,6 +1453,7 @@ function exportCsv(){
       err => { if (err.code === 'permission-denied'){ store.signOut(); renderLogin("Your account doesn't have access yet. Ask Kevin to add you."); } }
     );
     store.listenEngagement(l => { S.links = l; rerender(); }, c => { S.clicks = c; rerender(); });
+    store.listenClients(c => { S.clients = c; clashCache.key = ''; rerender(); });
   });
 })();
 </script>
