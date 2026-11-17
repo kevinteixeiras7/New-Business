@@ -508,8 +508,9 @@ function buildEmail(C){
   const hook = hookFor(b);
   const main = (MAIN_TEXT[b.stage] || MAIN_TEXT.Contacted)(b, deck);
   let body = `Hi ${n},\n\n` + (hook ? hook + '\n\n' : '') + main;
-  if (deck) body += `\n\nHere's our ${deck.name} for a flavour of our work:\n${GO_BASE}${C.ids.deck}`;
-  if (C.reel) body += `\n\n${deck ? 'And our' : 'Here\'s our'} showreel:\n${GO_BASE}${C.ids.reel}`;
+  C.tokens = {deck: deck ? `[${deck.name}]` : '', reel: C.reel ? '[showreel]' : ''};
+  if (deck) body += `\n\nHere's our ${C.tokens.deck} for a flavour of our work.`;
+  if (C.reel) body += `\n\nYou can also watch our ${C.tokens.reel}.`;
   return {subject: (SUBJECTS[b.stage] || SUBJECTS.Contacted)(b), body: body + '\n\n', contact: c, deck};
 }
 function openCompose(brandId, ci){
@@ -540,12 +541,13 @@ function renderCompose(){
       ${hookFor(b) ? `<div class="small" style="margin:6px 0;color:var(--blue)">Opens with the radar story: ${esc(b.lastSignal.title)}</div>` : ''}
       <label class="l" style="margin-top:10px">Subject</label><input class="f" id="cp-subject" value="${esc(C.subject)}">
       <label class="l" style="margin-top:10px">Message</label><textarea class="f" id="cp-body" rows="11">${esc(C.body)}</textarea>
-      <div class="small muted" style="margin-top:6px">Links are tracked: when they open the portfolio, it shows on Today. Changing the contact or portfolio resets the text.</div>
-      <div class="acts"><button class="btn" data-cp="cancel">Cancel</button><button class="btn" data-cp="copy">Copy text</button><button class="btn dark" data-cp="open">Open in mail app</button></div>
+      <div class="small muted" style="margin-top:6px">Words in [square brackets] become clickable links, so no web address shows in the email. Opens are tracked and show on Today. Changing the contact or portfolio resets the text.</div>
+      <div class="acts" style="flex-wrap:wrap"><button class="btn" data-cp="cancel">Cancel</button><span style="flex:1"></span><button class="btn" data-cp="copy">Copy message</button><button class="btn" data-cp="mailapp">Open in mail app</button><button class="btn dark" data-cp="gmail">Open in Gmail</button></div>
     </div>`;
   } else {
     const after = stageAfterSend(b, C);
     m.innerHTML = `<div class="box">
+      ${C.via ? `<div class="clash soft" style="margin-bottom:14px"><b>The message is copied.</b> ${C.via === 'copy' ? 'Paste it into a new email' : 'Click into the body of the new email and paste'} (Ctrl+V, or ⌘V on a Mac). The portfolio name will be a clickable link.</div>` : ''}
       <h3>Did you send it?</h3>
       <p class="small muted" style="margin-top:-6px">If you did, I'll log it on ${esc(b.name)}${after !== b.stage ? ` and move it to <b>${esc(after)}</b>` : ''}.</p>
       <label class="l">Next follow-up</label><input type="date" class="f" id="cp-next" value="${nextForStage(after) || addDays(today(), 7)}">
@@ -564,26 +566,26 @@ async function composeAction(act){
   const b = byId(C.brandId);
   if (act === 'cancel'){ S.compose = null; renderCompose(); return; }
   if (C.step === 1){
-    if ((act === 'open' || act === 'copy') && clientMatch(b)?.current && !$('#cp-ok')?.checked){ toast(`${b.name} is a current client. Tick the box once you've checked with the account lead.`); return; }
+    if (['copy','mailapp','gmail'].includes(act) && clientMatch(b)?.current && !$('#cp-ok')?.checked){ toast(`${b.name} is a current client. Tick the box once you've checked with the account lead.`); return; }
     C.subject = $('#cp-subject').value; C.body = $('#cp-body').value;
   }
   const c = b.contacts[C.ci];
-  if (act === 'copy'){
-    try { await navigator.clipboard.writeText(`To: ${c.email}\nSubject: ${C.subject}\n\n${C.body}`); toast('Copied'); } catch { toast('Copy blocked by the browser'); }
+  if (['copy','mailapp','gmail'].includes(act)){
+    // Clipboard and new-tab must happen straight from the click, before anything is awaited
+    const copied = copyRich(C);
+    if (act === 'gmail') window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(C.subject)}`, '_blank', 'noopener');
+    if (act === 'mailapp') location.href = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(C.subject)}`;
+    const ok = await copied;
+    if (!ok){ toast('The browser blocked copying. Use Copy message instead.'); }
     await saveLinks(C, b, c);
-    C.step = 2; renderCompose(); return;
-  }
-  if (act === 'open'){
-    await saveLinks(C, b, c);
-    location.href = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(C.subject)}&body=${encodeURIComponent(C.body)}`;
-    C.step = 2; setTimeout(renderCompose, 300); return;
+    C.via = act; C.step = 2; setTimeout(renderCompose, act === 'mailapp' ? 300 : 0); return;
   }
   if (act === 'notsent'){ S.compose = null; renderCompose(); return; }
   if (act === 'sent'){
     const after = stageAfterSend(b, C);
     const next = $('#cp-next').value || null;
     if (C.saved?.length) await store.markSent(C.saved);
-    const what = [C.deck && C.body.includes(C.ids.deck) ? deckByKey(C.deck).name : '', C.reel && C.body.includes(C.ids.reel) ? 'showreel' : ''].filter(Boolean).join(' + ');
+    const what = [C.deck && C.tokens.deck && C.body.includes(C.tokens.deck) ? deckByKey(C.deck).name : '', C.reel && C.body.includes(C.tokens.reel) ? 'showreel' : ''].filter(Boolean).join(' + ');
     const patch = {lastContact: today(), nextFollowUp: next};
     if (after !== b.stage) patch.stage = after;
     if (C.deck && C.deck !== suggestedDeck(b)) patch.deck = C.deck;
@@ -591,12 +593,40 @@ async function composeAction(act){
     S.compose = null; renderCompose(); toast('Logged');
   }
 }
+// The message as rich text: [Beauty portfolio] becomes a link that reads "Beauty portfolio"
+function richBody(C){
+  const links = [];
+  if (C.tokens.deck) links.push([C.tokens.deck, GO_BASE + C.ids.deck]);
+  if (C.tokens.reel) links.push([C.tokens.reel, GO_BASE + C.ids.reel]);
+  let html = esc(C.body), text = C.body;
+  links.forEach(([tok, url]) => {
+    const label = tok.slice(1, -1);
+    html = html.split(esc(tok)).join(`<a href="${url}">${esc(label)}</a>`);
+    text = text.split(tok).join(`${label} (${url})`);
+  });
+  html = html.replace(/\n/g, '<br>');
+  return {html: `<div>${html}</div>`, text};
+}
+async function copyRich(C){
+  const {html, text} = richBody(C);
+  try {
+    await navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([html], {type: 'text/html'}), 'text/plain': new Blob([text], {type: 'text/plain'})})]);
+    return true;
+  } catch (e){
+    try { // fallback: copy a selected rich element
+      const d = document.createElement('div'); d.innerHTML = html; d.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(d); const r = document.createRange(); r.selectNodeContents(d);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand('copy'); sel.removeAllRanges(); d.remove(); return ok;
+    } catch { return false; }
+  }
+}
 async function saveLinks(C, b, c){
   if (C.saved) return;
   const base = {brandId: b.id, brand: b.name, contact: c.name || c.email, sector: b.sector, stage: b.stage, sent: false, createdBy: me(), createdAt: new Date().toISOString()};
   const list = [];
-  if (C.deck && C.body.includes(C.ids.deck)){ const d = deckByKey(C.deck); list.push({id: C.ids.deck, ...base, deck: d.key, deckName: d.name, url: DRIVE_URL(d.id)}); }
-  if (C.reel && C.body.includes(C.ids.reel)) list.push({id: C.ids.reel, ...base, deck: 'showreel', deckName: 'Showreel', url: DRIVE_URL(SHOWREEL.id)});
+  if (C.deck && C.tokens.deck && C.body.includes(C.tokens.deck)){ const d = deckByKey(C.deck); list.push({id: C.ids.deck, ...base, deck: d.key, deckName: d.name, url: DRIVE_URL(d.id)}); }
+  if (C.reel && C.tokens.reel && C.body.includes(C.tokens.reel)) list.push({id: C.ids.reel, ...base, deck: 'showreel', deckName: 'Showreel', url: DRIVE_URL(SHOWREEL.id)});
   if (list.length){ try { await store.createLinks(list); } catch (err){ console.warn(err); toast('Links not tracked: ' + (err.code || err.message)); } }
   C.saved = list.map(l => l.id);
 }
