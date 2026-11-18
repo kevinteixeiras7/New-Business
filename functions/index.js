@@ -206,7 +206,7 @@ async function runScan(trigger) {
 
 exports.dailyRadar = onSchedule(
   { schedule: '0 7 * * *', timeZone: 'Europe/London', timeoutSeconds: 540, memory: '512MiB' },
-  async () => { await runScan('schedule'); await enrichSignals(80, 420000); }
+  async () => { await runScan('schedule'); await enrichSignals(60, 300000); try { await exportResearch(30); } catch (e) { logger.warn('research export', e.message); } }
 );
 
 exports.runScanNow = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (req) => {
@@ -359,6 +359,88 @@ async function enrichSignals(limit, budgetMs){
   return out;
 }
 
+// ---------------------------------------------------------------------------
+//  Research sheet: a private Google Sheet that Claude's weekday scheduled task
+//  fills in. The app writes brands that still need contacts, then reads back
+//  what was found. Only the service account and Kevin can open the sheet.
+// ---------------------------------------------------------------------------
+const { GoogleAuth } = require('google-auth-library');
+const SHEET_ID = '1Tuw2h12e6NceVLH9hz9AS7bPtzMQMNI191pvdXwX2qM';
+const SHEET_TAB = 'Research';
+let sheetClient;
+async function sheets(method, path, data){
+  sheetClient = sheetClient || await new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] }).getClient();
+  const r = await sheetClient.request({ url: `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${path}`, method, data });
+  return r.data;
+}
+const keyOf = n => n.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+async function readSheet(){
+  const d = await sheets('GET', encodeURIComponent(`${SHEET_TAB}!A1:R2000`));
+  return (d.values || []);
+}
+async function exportResearch(limit = 30){
+  const rows = await readSheet();
+  const have = new Set(rows.slice(1).map(r => r[0]));
+  const [sigs, brandSnap] = await Promise.all([db.collection('signals').where('status', '==', 'new').get(), db.collection('brands').get()]);
+  const brands = new Map(brandSnap.docs.map(d => [d.id, d.data()]));
+  const groups = new Map();
+  for (const d of sigs.docs){
+    const s = d.data(); const b = s.brandId && brands.get(s.brandId);
+    const name = b ? b.name : (s.brandGuess || ''); if (!name) continue;
+    const k = keyOf(name); if (have.has(k)) continue;
+    const c = s.contact || {};
+    const hasEmail = c.email || (b && (b.contacts || []).some(x => x.email));
+    if (hasEmail && c.person) continue;
+    const g = groups.get(k);
+    if (!g || s.score > g.s.score) groups.set(k, { k, name, s, b, c });
+  }
+  const add = [...groups.values()].sort((a, b) => b.s.score - a.s.score).slice(0, limit).map(({ k, name, s, b, c }) => [
+    k, name, (b && b.sector) || s.sector || '', s.type, s.title, s.link, (b && b.website) || c.website || '',
+    ROLE_FOR[s.type] || 'Head of Marketing', s.type === 'Appointment' ? personInTitle(s.title) : '', 'To research', '', '', '', '', '', '', '', '']);
+  if (add.length) await sheets('POST', encodeURIComponent(`${SHEET_TAB}!A1`) + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', { values: add });
+  logger.info('Research export', { added: add.length });
+  return add.length;
+}
+async function importResearch(){
+  const rows = await readSheet();
+  const now = new Date().toISOString();
+  const todo = rows.map((r, i) => ({ r, row: i + 1 })).slice(1).filter(({ r }) => /^(done|nothing found)$/i.test((r[9] || '').trim()) && !r[17]);
+  if (!todo.length) return 0;
+  const [sigs, brandSnap] = await Promise.all([db.collection('signals').where('status', 'in', ['new', 'added']).get(), db.collection('brands').get()]);
+  const brandByKey = new Map(brandSnap.docs.map(d => [keyOf(d.data().name || ''), d]));
+  let n = 0;
+  for (const { r, row } of todo){
+    const k = r[0], email = (r[10] || '').trim().toLowerCase(), pname = (r[12] || '').trim(), url = (r[14] || '').trim();
+    const person = pname ? { name: pname, title: (r[13] || '').trim(), url: /^https:\/\/([a-z]+\.)?linkedin\.com\//.test(url) ? url.split('?')[0] : '' } : null;
+    const okEmail = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email) ? email : '';
+    const contact = { email: okEmail, kind: okEmail ? 'Researched inbox' : '', source: (r[11] || '').trim(), website: (r[6] || '').trim(), person, named: r[8] || '', at: r[16] || now, by: 'research' };
+    const batch = db.batch();
+    const bdoc = brandByKey.get(k);
+    sigs.docs.forEach(d => {
+      const s = d.data(); const b = s.brandId && brandSnap.docs.find(x => x.id === s.brandId);
+      const name = b ? b.data().name : (s.brandGuess || '');
+      if (keyOf(name) !== k) return;
+      const prev = s.contact || {};
+      batch.update(d.ref, { contact: { ...prev, ...contact, email: contact.email || prev.email || '', kind: contact.email ? contact.kind : (prev.kind || ''), person: contact.person || prev.person || null }, contactTried: now });
+    });
+    if (bdoc){ // brand already in the app: add what was found as contacts marked ✦
+      const b = bdoc.data(); const contacts = [...(b.contacts || [])];
+      if (person && !contacts.some(c => (c.name || '').toLowerCase() === person.name.toLowerCase())) contacts.push({ name: person.name, title: person.title, email: '', phone: '', linkedin: person.url, flag: '', ai: true, aiSource: person.url || 'research' });
+      if (okEmail && !contacts.some(c => (c.email || '').toLowerCase() === okEmail)) contacts.push({ name: '', title: 'Researched inbox', email: okEmail, phone: '', linkedin: '', flag: '', ai: true, aiSource: contact.source || contact.website });
+      if (contacts.length !== (b.contacts || []).length && contacts.length <= 40) batch.update(bdoc.ref, { contacts, ...(contact.website && !b.website ? { website: contact.website } : {}) });
+    }
+    await batch.commit();
+    await sheets('PUT', encodeURIComponent(`${SHEET_TAB}!R${row}`) + '?valueInputOption=RAW', { values: [[now]] });
+    n++;
+  }
+  logger.info('Research import', { imported: n });
+  return n;
+}
+exports.researchSync = onSchedule(
+  { schedule: '*/30 7-19 * * 1-5', timeZone: 'Europe/London', timeoutSeconds: 300, memory: '256MiB' },
+  async () => { await importResearch(); }
+);
+
 exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstances: 4 }, async (req) => {
   const email = (req.auth?.token?.email || '').toLowerCase();
   if (!req.auth || !req.auth.token.email_verified || !TEAM.includes(email)) throw new HttpsError('permission-denied', 'Not on the new business team');
@@ -370,6 +452,8 @@ exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstanc
 });
 exports._findContact = findContact;
 exports._findPerson = findPerson;
+exports._exportResearch = exportResearch;
+exports._importResearch = importResearch;
 
 // exported for local testing
 exports._classify = classify;
