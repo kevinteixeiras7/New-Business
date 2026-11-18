@@ -70,7 +70,20 @@ const TYPES = [
   ['Launch', /\b(launch|launches|launched|debut|debuts|unveils|collection|collaboration|collab|drops)\b/i, 2],
 ];
 const ROLE_WORDS = /\b(ecommerce|e-commerce|ecom|digital|brand|marketing|creative|content|cmo|production)\b/i;
-const NOISE = /\b(shares fell|stock price|share price|profit warning|lawsuit|recall|obituary|dies|died|arrested|court)\b/i;
+const NOISE = /\b(shares? (fell|fall|falls|slide|slides|slump|drop|drops|rise|rises|jump)|stock price|share price|profit warning|earnings|lawsuit|recall|obituary|dies|died|death|killed|arrested|court|police|horoscope|zodiac|astrolog\w*|tarot|transfer (news|target|speculation|window)|injury|injured|governor|gov|chief of staff|senator|election|bakery|savings|council|church|weather|recipe|apartments?|mortgage)\b/i;
+// The story has to read like it's about a brand we could shoot for
+const INDUSTRY = /\b(fashion|clothing|apparel|brand|label|beauty|skincare|cosmetics?|makeup|fragrance|retail|retailer|store|stores|flagship|boutique|collection|campaign|collab\w*|footwear|shoes|trainers?|sneakers?|activewear|sportswear|athleisure|jewellery|jewelry|designer|luxury|homeware|interiors|ecommerce|e-commerce|marketing|creative|shoot|lookbook|capsule|drop|range|kit|merch\w*|sponsor\w*|ambassador|cmo|chief marketing|creative director|brand director)\b/i;
+// Football clubs and leagues: only kit, merch and partnership stories, not match reports or transfers
+const CLUB = /\b(fc|afc|albion|united|city|rugby|league|ham|millwall|county|rovers|wanderers)\b/i;
+const CLUB_OK = /\b(kit|shirt|jersey|sponsor\w*|partner\w*|campaign|collection|merch\w*|store|retail|brand|ambassador|launch\w*|collab\w*)\b/i;
+// A brand name is ambiguous if it's one ordinary-looking word, or on the known list
+const isAmbiguous = b => GENERIC.has(b.key) || !/\s/.test(b.name.trim()) || b.name.length < 7;
+function relevant(title, brand){
+  if (!brand) return true;
+  if (CLUB.test(brand.name) && (brand.sector === 'Sportswear' || /fc|rugby|league/i.test(brand.name))) return CLUB_OK.test(title);
+  if (isAmbiguous(brand)) return INDUSTRY.test(title);
+  return true;
+}
 // Brand names that are ordinary words, so only matched through their own brand search
 const GENERIC = new Set(['office', 'lounge', 'coach', 'dune', 'represent', 'mac', 'elf', 'aries', 'arne', 'ando', 'huel', 'omnes', 'veet', 'wella', 'frkl']);
 
@@ -103,7 +116,7 @@ function classify(item, brands, queryBrand) {
   if (!brand) {
     for (const b of brands) {
       if (b.key.length < 4 || GENERIC.has(b.key)) continue;
-      if (b.re.test(title)) { brand = b; break; }
+      if (b.re.test(title) && relevant(title, b)) { brand = b; break; }
     }
   }
   let sector = brand?.sector || '';
@@ -120,7 +133,8 @@ function classify(item, brands, queryBrand) {
 
   if (type === 'News' && !brand) return null; // generic noise
   if (score < 4) return null;
-  if (queryBrand && !new RegExp(escRe(queryBrand.name.split(' ')[0]), 'i').test(title)) return null; // brand search drifted
+  if (queryBrand && !queryBrand.re.test(title)) return null; // brand search drifted
+  if (!relevant(title, brand)) return null; // e.g. "Aries" horoscopes, "Coach" football coaches
 
   return {
     title: item.title, link: item.link, source: item.source, published: item.published,
@@ -149,7 +163,7 @@ async function runScan(trigger) {
 
   const jobs = [
     ...queries.map(q => ({ q, brand: null })),
-    ...rotation.map(b => ({ q: `"${b.name}" (appoints OR appointed OR "head of" OR launch OR rebrand OR campaign OR opens OR raises)`, brand: b })),
+    ...rotation.map(b => ({ q: `"${b.name}" (appoints OR appointed OR "head of" OR launch OR rebrand OR campaign OR opens OR raises)${isAmbiguous(b) ? ' (fashion OR brand OR beauty OR clothing OR retailer OR collection)' : ''}`, brand: b })),
   ];
 
   const found = new Map();
@@ -169,6 +183,20 @@ async function runScan(trigger) {
       }
     });
     await new Promise(r => setTimeout(r, 400));
+  }
+
+  // Re-check stories still waiting for review against the current filters, and drop the ones that no longer pass
+  let screened = 0;
+  {
+    const byId = new Map(brands.map(b => [b.id, b]));
+    const waiting = await db.collection('signals').where('status', '==', 'new').get();
+    const del = db.batch();
+    waiting.docs.forEach(d => {
+      const x = d.data(); const t = String(x.title || '').replace(/\s+-\s+[^-]+$/, '');
+      const b = x.brandId ? byId.get(x.brandId) : brands.find(y => y.name === x.brandGuess);
+      if (NOISE.test(t) || (b && !b.re.test(t)) || !relevant(t, b)) { del.delete(d.ref); screened++; }
+    });
+    if (screened) await del.commit();
   }
 
   // Write only new signals; never overwrite something the team already handled
@@ -199,14 +227,14 @@ async function runScan(trigger) {
     lastRun: now, lastRunBy: trigger, lastAdded: added,
   }, { merge: true });
 
-  const out = { added, scanned, queries: jobs.length, failed, removed, seconds: Math.round((Date.now() - started) / 1000) };
+  const out = { added, scanned, screened, queries: jobs.length, failed, removed, seconds: Math.round((Date.now() - started) / 1000) };
   logger.info('Radar scan', out);
   return out;
 }
 
 exports.dailyRadar = onSchedule(
   { schedule: '0 7 * * *', timeZone: 'Europe/London', timeoutSeconds: 540, memory: '512MiB' },
-  async () => { await runScan('schedule'); await enrichSignals(60, 300000); try { await exportResearch(30); } catch (e) { logger.warn('research export', e.message); } }
+  async () => { await runScan('schedule'); await enrichSignals(60, 300000); try { await exportResearch(40); } catch (e) { logger.warn('research export', e.message); } }
 );
 
 exports.runScanNow = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (req) => {
@@ -315,6 +343,7 @@ async function findContact(name, hint){
   }
   return best ? {website: site, email: best.email, kind: best.kind, source: best.source} : {website: site, email: '', note: 'No published email on the site'};
 }
+const ROLE_BY_SECTOR = { Beauty: 'Head of Brand', Sportswear: 'Brand Marketing Manager', Interiors: 'Head of Brand' };
 const ROLE_FOR = {Appointment:'Head of Marketing', Agency:'Head of Marketing', Rebrand:'Brand Director', Funding:'Head of Marketing', Expansion:'Head of Ecommerce', Launch:'Head of Ecommerce', News:'Head of Marketing'};
 function personInTitle(t){
   t = (t || '').replace(/\s+[-–|]\s+[^-–|]{2,40}$/, '');
@@ -397,6 +426,20 @@ async function exportResearch(limit = 30){
   const add = [...groups.values()].sort((a, b) => b.s.score - a.s.score).slice(0, limit).map(({ k, name, s, b, c }) => [
     k, name, (b && b.sector) || s.sector || '', s.type, s.title, s.link, (b && b.website) || c.website || '',
     ROLE_FOR[s.type] || 'Head of Marketing', s.type === 'Appointment' ? personInTitle(s.title) : '', 'To research', '', '', '', '', '', '', '', '']);
+  // Then pipeline brands with no email yet, most important first (current clients are left out)
+  if (add.length < limit){
+    const clientNames = new Set((await db.collection('clients').get()).docs.map(d => keyOf(d.data().name || '')));
+    const PR = { High: 0, Medium: 1, Low: 2 }, STAGE = ['Proposal', 'Meeting', 'Portfolio Sent', 'Contacted', 'Prospect'];
+    const taken = new Set(add.map(r => r[0]));
+    const pipe = brandSnap.docs.map(d => d.data()).filter(b => b.name && !['Won', 'Lost', 'Paused'].includes(b.stage)
+        && !(b.contacts || []).some(c => c.email) && !have.has(keyOf(b.name)) && !taken.has(keyOf(b.name)) && !clientNames.has(keyOf(b.name)))
+      .sort((a, b) => (PR[a.priority] ?? 1) - (PR[b.priority] ?? 1) || STAGE.indexOf(a.stage) - STAGE.indexOf(b.stage));
+    for (const b of pipe.slice(0, limit - add.length)){
+      const named = (b.contacts || []).find(c => c.name);
+      add.push([keyOf(b.name), b.name, b.sector || '', 'Pipeline', `In the pipeline at ${b.stage}, no email yet`, '', b.website || '',
+        named?.title || ROLE_BY_SECTOR[b.sector] || 'Head of Marketing', named?.name || '', 'To research', '', '', '', '', '', '', '', '']);
+    }
+  }
   if (add.length) await sheets('POST', encodeURIComponent(`${SHEET_TAB}!A1`) + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', { values: add });
   logger.info('Research export', { added: add.length });
   return add.length;
@@ -457,4 +500,5 @@ exports._importResearch = importResearch;
 
 // exported for local testing
 exports._classify = classify;
+exports._relevant = relevant;
 exports._DEFAULT_QUERIES = DEFAULT_QUERIES;
