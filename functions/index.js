@@ -479,9 +479,50 @@ async function importResearch(){
   logger.info('Research import', { imported: n });
   return n;
 }
+// Every brand and client the app already knows, so the brand finder never suggests them again
+async function exportKnown(){
+  const [b, c] = await Promise.all([db.collection('brands').get(), db.collection('clients').get()]);
+  const rows = [['name', 'type'], ...b.docs.map(d => [d.data().name || '', 'Pipeline ' + (d.data().stage || '')]), ...c.docs.map(d => [d.data().name || '', 'Current client'])].filter(r => r[0]);
+  await sheets('POST', encodeURIComponent('Known!A1:B5000') + ':clear', {});
+  await sheets('PUT', encodeURIComponent(`Known!A1:B${rows.length}`) + '?valueInputOption=RAW', { values: rows });
+  return rows.length - 1;
+}
+// New brands found by the brand finder become stories on the Radar, with their contacts attached
+async function importProspects(){
+  const d = await sheets('GET', encodeURIComponent('Prospects!A1:O1000'));
+  const rows = d.values || [], now = new Date().toISOString();
+  const todo = rows.map((r, i) => ({ r, row: i + 1 })).slice(1).filter(({ r }) => (r[1] || '').trim() && /^new$/i.test((r[12] || '').trim()) && !r[14]);
+  if (!todo.length) return 0;
+  const [b, c] = await Promise.all([db.collection('brands').get(), db.collection('clients').get()]);
+  const known = new Set([...b.docs, ...c.docs].map(x => keyOf(x.data().name || '')));
+  let n = 0;
+  for (const { r, row } of todo){
+    const name = r[1].trim(), k = keyOf(name);
+    let note = 'Already in the app';
+    if (!known.has(k)){
+      const email = (r[7] || '').trim().toLowerCase(), url = (r[11] || '').trim();
+      const site = /^https?:\/\//.test(r[4] || '') ? r[4].trim() : '';
+      const ref = db.doc(`signals/${hash('prospect:' + k)}`);
+      if (!(await ref.get()).exists){
+        await ref.set({
+          title: `${name}: ${(r[5] || 'A brand that fits Seventy7').trim()}`, link: site || (r[6] || '').trim(), source: 'Brand finder', published: now,
+          type: 'New brand', score: 7, sector: (r[2] || '').trim(), brandId: null, brandGuess: name, status: 'new', createdAt: now, location: (r[3] || '').trim(),
+          contact: { email: /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email) ? email : '', kind: email ? 'Researched inbox' : '', source: (r[8] || '').trim(), website: site,
+            person: (r[9] || '').trim() ? { name: r[9].trim(), title: (r[10] || '').trim(), url: /linkedin\.com\//.test(url) ? url.split('?')[0] : '' } : null, at: r[13] || now, by: 'research' },
+          contactTried: now,
+        });
+        n++; known.add(k); note = '';
+      }
+    }
+    await sheets('PUT', encodeURIComponent(`Prospects!M${row}:O${row}`) + '?valueInputOption=RAW', { values: [[note ? 'Skipped: ' + note : 'Imported', r[13] || '', now]] });
+  }
+  logger.info('Prospects import', { imported: n });
+  return n;
+}
+
 exports.researchSync = onSchedule(
   { schedule: '*/30 7-19 * * 1-5', timeZone: 'Europe/London', timeoutSeconds: 300, memory: '256MiB' },
-  async () => { await importResearch(); }
+  async () => { await importResearch(); await importProspects(); try { await exportKnown(); } catch (e) { logger.warn('known', e.message); } }
 );
 
 exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstances: 4 }, async (req) => {
@@ -497,6 +538,7 @@ exports._findContact = findContact;
 exports._findPerson = findPerson;
 exports._exportResearch = exportResearch;
 exports._importResearch = importResearch;
+exports._importProspects = importProspects;
 
 // exported for local testing
 exports._classify = classify;

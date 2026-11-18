@@ -349,6 +349,7 @@ const HOOKS = {
   Funding: b => `Congratulations on the investment news, exciting times for ${b.name}.`,
   Expansion: b => `Congratulations on the expansion, great to see ${b.name} growing.`,
   Agency: b => `I saw ${b.name} may be looking at creative partners, so the timing felt right to say hello.`,
+  'New brand': b => `I came across ${b.name} recently and love what you're building.`,
   News: b => `I saw ${b.name} in the news recently and wanted to say hello.`,
 };
 
@@ -985,7 +986,7 @@ function vBrands(){
 }
 
 // ---------- Radar ----------
-const TYPE_CLASS = {Appointment:'hot', Agency:'hot', Rebrand:'blue', Funding:'ok', Launch:'blue', Expansion:'ok'};
+const TYPE_CLASS = {Appointment:'hot', Agency:'hot', Rebrand:'blue', Funding:'ok', Launch:'blue', Expansion:'ok', 'New brand':'dark'};
 function clientInTitle(t){
   return S.clients.find(c => c.name.length >= 4 && new RegExp(`\\b${c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t || ''));
 }
@@ -1017,6 +1018,7 @@ const SIG_INFO = {
   Funding:     {why: 'Fresh money usually goes into growth, ecommerce and content.', who: 'Head of Marketing or a founder', ask: 'Show how we scale content as they grow.'},
   Expansion:   {why: 'New stores and markets need new campaign and product imagery.', who: 'Head of Ecommerce or Retail Marketing', ask: 'Pitch launch content for the new stores or markets.'},
   Launch:      {why: 'A new product or collection means a shoot is coming.', who: 'Head of Ecommerce or Content Production', ask: 'Offer to shoot the next drop.'},
+  'New brand': {why: 'A smaller brand that fits what Seventy7 shoots, found by the brand finder.', who: 'Founder or Head of Marketing', ask: 'Introduce Seventy7 and offer a small test shoot.'},
   News:        {why: 'A natural reason to get back in touch.', who: 'Your main contact there', ask: 'Use the story as your opening line.'},
 };
 const sigInfo = s => SIG_INFO[s.type] || SIG_INFO.News;
@@ -1092,7 +1094,7 @@ function radarCard(g, big){
       <span style="flex:1"></span>${strengthHtml(s.score)}
     </div>
     <a class="rc-head" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(cleanTitle(s.title))}</a>
-    <div class="rc-meta">${esc(s.source || '')}${s.published ? ' · ' + dayAgo(s.published) : ''}${s.sector ? ' · ' + esc(s.sector) : ''}${b ? ` · <a href="#" data-open="${b.id}">In pipeline: ${esc(b.stage)}</a>` : ''}</div>
+    <div class="rc-meta">${s.location ? esc(s.location) + ' · ' : ''}${esc(s.source || '')}${s.published ? ' · ' + dayAgo(s.published) : ''}${s.sector ? ' · ' + esc(s.sector) : ''}${b ? ` · <a href="#" data-open="${b.id}">In pipeline: ${esc(b.stage)}</a>` : ''}</div>
     ${cl ? `<div class="rc-warn"><b>${esc(cl.name)} is a current client.</b> Check with the account lead before reaching out.</div>` : ''}
     <dl class="rc-dl">
       <dt>Why it matters</dt><dd>${esc(info.why)}</dd>
@@ -1320,7 +1322,7 @@ async function sigEmail(id, groupIds){
   openCompose(bid, ci < 0 ? null : ci);
 }
 const LI_HOOK = {Appointment: () => 'congratulations on the new role!', Rebrand: n => `loved the new look at ${n}.`, Funding: () => 'congrats on the investment news.',
-  Expansion: n => `great to see ${n} growing.`, Launch: () => 'congrats on the new launch.', Agency: n => `I saw ${n} may be looking at creative partners.`, News: n => `I saw ${n} in the news.`};
+  Expansion: n => `great to see ${n} growing.`, Launch: () => 'congrats on the new launch.', Agency: n => `I saw ${n} may be looking at creative partners.`, 'New brand': n => `I came across ${n} and love what you're building.`, News: n => `I saw ${n} in the news.`};
 function liMessage(s, brandName, personName, deck, link){
   const me1 = firstName(S.user.displayName) || 'Kevin';
   const hi = `Hi ${firstName(personName) || 'there'}, ${(LI_HOOK[s.type] || LI_HOOK.News)(brandName)}`;
