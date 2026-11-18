@@ -108,6 +108,7 @@ label.l{display:block;font-size:11px;font-weight:600;text-transform:uppercase;le
 .bc{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 11px;margin-bottom:7px;cursor:grab;box-shadow:0 1px 1px rgba(0,0,0,.03)}
 .bc:hover{border-color:#cfcbc2}
 .bc b{display:block;font-size:13px;margin-bottom:5px}
+.bc .who{font-size:12px;color:var(--muted,#777);margin:-2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bc .meta{display:flex;justify-content:space-between;align-items:center;gap:6px}
 .bc.dragging{opacity:.4}
 .col .more{text-align:center;padding:6px;font-size:12px;color:var(--muted)}
@@ -947,6 +948,7 @@ function vPipeline(){
       <div class="col-h">${st}<span>${items.length}</span></div>
       ${items.slice(0, cap).map(b => `<div class="bc" draggable="true" data-card="${b.id}">
         <b>${esc(b.name)} ${clashChip(b)}</b>
+        ${(() => { const cs = b.contacts||[]; const c = cs.find(x => x.main) || cs[0]; return c ? `<div class="who" title="${esc(cs.map(x => x.name || x.email).join(', '))}">${esc(c.name || c.email || '')}${cs.length > 1 ? ` +${cs.length-1}` : ''}</div>` : '<div class="who">No contact yet</div>'; })()}
         <div class="meta"><span class="chip">${esc(b.sector)}</span>${['Won','Lost','Paused','Prospect'].includes(st) ? prioChip(b.priority) : dueLabel(b.nextFollowUp)}</div>
       </div>`).join('')}
       ${items.length > cap ? `<div class="more">+${items.length - cap} more, use Brands view</div>` : ''}
