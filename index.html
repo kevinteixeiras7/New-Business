@@ -289,6 +289,35 @@ table.t tr.click:hover td{background:#fbfaf8}
   .content{padding:16px}
   .row{flex-wrap:wrap}
 }
+
+.rm-head{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.rm-bar{flex:1;min-width:220px;height:8px;border-radius:6px;background:var(--line2,#eee);overflow:hidden}
+.rm-bar i{display:block;height:100%;background:#111;border-radius:6px}
+.rm-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+@media(max-width:1100px){.rm-cols{grid-template-columns:1fr}}
+.rm-col{background:var(--line2,#f0efec);border-radius:12px;padding:12px}
+.rm-col>h3{display:flex;justify-content:space-between;align-items:baseline;margin:2px 4px 4px;font-size:15px}
+.rm-col>p{margin:0 4px 12px;font-size:12px;color:var(--muted)}
+.rmc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 14px;margin-bottom:10px}
+.rmc.done{opacity:.7}
+.rmc .rt{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.rmc .rt b{font-size:14px}
+.rmc .rn{color:var(--muted);font-weight:600;margin-right:4px}
+.rmc .rmeta{display:flex;gap:6px;flex-wrap:wrap;margin:7px 0 8px}
+.rmc p{margin:0 0 6px;font-size:13px;line-height:1.45}
+.rmc details summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);margin-top:4px}
+.rmc details ul{margin:8px 0 6px;padding-left:18px;font-size:12.5px;line-height:1.45}
+.rmc .kv{font-size:12px;color:var(--muted);margin-top:4px}
+.rmc .kv b{color:var(--ink);font-weight:600}
+.rmc select{font-size:12px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.rm-st{font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.rm-st.planned{background:#f1f1f1;color:#555}.rm-st.progress{background:#fff4d6;color:#8a5a00}.rm-st.done{background:#e3f4e6;color:#1d6b33}
+.rm-shipped{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.rm-shipped div{background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px}
+.rm-shipped span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.rm-viz{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px}
+.rm-viz div{background:var(--line2,#f4f3f0);border-radius:8px;padding:9px 11px;font-size:12.5px}
+.rm-viz b{display:block;font-size:12px;margin-bottom:2px}
 </style>
 </head>
 <body>
@@ -507,6 +536,8 @@ async function firebaseStore(){
     },
     async getRadar(){ const d = await F.getDoc(F.doc(db,'settings','radar')); return d.exists() ? d.data() : null; },
     saveRadar(data){ return F.setDoc(F.doc(db,'settings','radar'), {queries: data.queries, updatedAt: now()}, {merge:true}); },
+    async getRoadmap(){ const d = await F.getDoc(F.doc(db,'settings','roadmap')); return d.exists() ? d.data() : null; },
+    saveRoadmap(data){ return F.setDoc(F.doc(db,'settings','roadmap'), {...data, updatedAt: now()}, {merge:true}); },
     async runScan(){ const r = await Fn.httpsCallable(fns,'runScanNow',{timeout:300000})(); return r.data; },
     async findContact(name, website){ const r = await Fn.httpsCallable(fns,'findContact',{timeout:120000})({name, website}); return r.data; }
   };
@@ -541,7 +572,7 @@ async function demoStore(){
     async remove(id){ brands = brands.filter(b => b.id !== id); emit(); },
     async updateSignal(id, patch){ signals = signals.map(s => s.id === id ? {...s, ...patch} : s); emit(); },
     async importBrands(list){ return {written:0, skipped:list.length}; },
-    async getRadar(){ return null; }, async saveRadar(){},
+    async getRadar(){ return null; }, async saveRadar(){}, async getRoadmap(){ return JSON.parse(JSON.stringify(window.__rm || {})); }, async saveRoadmap(d){ window.__rm = {...(window.__rm || {}), ...d}; },
     async runScan(){ await new Promise(r => setTimeout(r, 900)); return {added:0, scanned:0}; },
     async findContact(name){ await new Promise(r => setTimeout(r, 500)); const d = name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.com'; return Math.random() < .6 ? {website:'https://'+d, email:'press@'+d, kind:'Press inbox', source:'https://'+d+'/contact'} : {website:'https://'+d, email:'', note:'No published email on the site'}; }
   };
@@ -824,9 +855,9 @@ function render(){
   if (!S.user){ return renderLogin(); }
   const dueCount = S.brands.filter(b => b.nextFollowUp && b.nextFollowUp <= today() && !['Won','Lost','Paused'].includes(b.stage)).length;
   const newSig = groupSigs(S.signals.filter(s => s.status === 'new')).length;
-  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['find','Find contacts',null,findCount()],['clients','Clients'],['radar','Radar',newSig],['dashboard','Dashboard']];
+  const navs = [['today','Today',dueCount],['pipeline','Pipeline'],['brands','Brands'],['find','Find contacts',null,findCount()],['clients','Clients'],['radar','Radar',newSig],['dashboard','Dashboard'],['roadmap','Roadmap']];
   if (S.isAdmin) navs.push(['admin','Admin']);
-  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', find:'Find contacts', clients:'Client directory', radar:'Opportunity radar', dashboard:'Dashboard', admin:'Admin'};
+  const titles = {today:greeting(), pipeline:'Pipeline', brands:'Brands', find:'Find contacts', clients:'Client directory', radar:'Opportunity radar', dashboard:'Dashboard', roadmap:'Roadmap', admin:'Admin'};
   $('#root').innerHTML = `
   <div class="app">
     <aside class="side">
@@ -843,7 +874,7 @@ function render(){
         <button class="btn dark" data-act="new-brand">+ Add brand</button>
         <span class="mobile-only" style="gap:6px"><a class="btn sm ghost" href="${STUDIO_REPORTING_URL}" target="_blank" rel="noopener">Studio Reporting ↗</a><button class="btn sm ghost" data-act="signout">Sign out</button></span>
       </div>
-      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, find:vFind, clients:vClients, radar:vRadar, dashboard:vDash, admin:vAdmin})[S.view]()}</div>
+      <div class="content">${({today:vToday, pipeline:vPipeline, brands:vBrands, find:vFind, clients:vClients, radar:vRadar, dashboard:vDash, roadmap:vRoadmap, admin:vAdmin})[S.view]()}</div>
     </main>
   </div>`;
   if (S.view === 'pipeline') wireBoard();
@@ -1621,6 +1652,113 @@ function vAdmin(){
   </div>`;
 }
 
+
+// ===================================================================
+//  Roadmap
+// ===================================================================
+const RM_PHASES = [
+  {k:1, t:'Now', d:'Next 2 to 3 weeks. Quick wins using data the app already holds.'},
+  {k:2, t:'Next', d:'December into January. Visuals and new information on each brand.'},
+  {k:3, t:'Later', d:'From January 2027. Needs more history, a new routine or IT approval.'}
+];
+const RM = [
+  {id:'my-today', ph:1, name:'My Today', grp:'Team', eff:'S to M',
+    what:'Today shows your own day first: brands you own that need chasing, portfolio links you sent that were opened, people waiting on you, meetings this week, and what is up for grabs. Everyone else\'s work sits on a Team tab.',
+    how:['Builds on owners, Pick it up and the Mine filter (live).','Sections: Chase today, Opened your link, Waiting on me, Meetings this week, Up for grabs, Tracking (brands you contacted in the last 30 days and where each one is now).','A "My week" strip: touches, portfolios sent, opens, meetings booked.'],
+    needs:'Nothing. Owner field is live.', done:'Each of the six sees their own list by default and can switch to Team.'},
+  {id:'prep', ph:1, name:'Meeting prep', grp:'From the paid tools', eff:'S',
+    what:'A Prep button on every brand that opens a one-page brief before a call: latest news, who you spoke to and when, what you sent, which links were opened, their current studio and three talking points.',
+    how:['Uses the touchpoint log, contacts, Radar stories, tracked links and opens.','Talking points written from sector, stage and the latest story.','Printable, and shareable with whoever takes the meeting.'],
+    needs:'Nothing.', done:'Any brand with history gives a full brief in one click.'},
+  {id:'nudges', ph:1, name:'Follow-up drafts', grp:'From the paid tools', eff:'S to M',
+    what:'When a portfolio link is opened and there is no reply after 2 working days, the app drafts a short personal nudge on the owner\'s Today to check and send. Nothing sends by itself.',
+    how:['Uses the existing link open tracking.','Wording changes with stage and what they opened.','One nudge per open, two per brand per month at most.'],
+    needs:'Nothing. Better once Reply tracking exists.', done:'Opened, unanswered links create a draft for the right person within a day.'},
+  {id:'decks', ph:1, name:'Portfolio matching', grp:'How Seventy7 sells', eff:'S',
+    what:'When you email or LinkedIn a brand, the app suggests the best deck or case study from sector and story type. Sportswear + Funding suggests the activewear reel.',
+    how:['A rules table in Admin the team can edit.','Later learns from What\'s working: decks that get more opens and meetings come first.'],
+    needs:'The current decks and case studies with Drive links.', done:'Every compose window opens with a suggested deck.'},
+  {id:'graphs', ph:2, name:'Graphs and visual dashboard', grp:'Team', eff:'M',
+    what:'A visual refresh so the state of new business reads at a glance, on the Dashboard and across the app.',
+    how:['Pipeline funnel and conversion between stages.','Pipeline over time: brands moving forward each week.','Activity by person per month.','Portfolio links sent versus opened.','Radar stories by type and sector, and how many became prospects.','Where won brands came from.','Sparklines on Today and on each brand.'],
+    needs:'Activity by person for the per-person charts.', done:'The Dashboard answers "are we doing more, and is it working?" without a spreadsheet.'},
+  {id:'activity', ph:2, name:'Activity by person', grp:'Team', eff:'S',
+    what:'Touches, portfolios sent, meetings booked and wins per person each month.',
+    how:['Counted from the touchpoint log (every entry records who) and owners.','This month against last month, as a table and charts.'],
+    needs:'Owners (live).', done:'Everyone\'s month in one place, matching the log.'},
+  {id:'studios', ph:2, name:'Who works with who', grp:'From the paid tools', eff:'M to L',
+    what:'Record which production studio or agency each brand uses now, and flag when it changes. A brand switching suppliers is the best time to get in touch.',
+    how:['A Current studio field on each brand with a source link and date.','Filled by the morning research task from credits, LinkedIn and press, marked ✦ until checked.','Radar raises a strong signal when a studio changes or a brand reviews partners.'],
+    needs:'Extra steps in the weekday research task (no new cost).', done:'Top 100 brands have a known studio, and changes show on the Radar.'},
+  {id:'seasons', ph:2, name:'Shoot calendar hooks', grp:'How Seventy7 sells', eff:'S to M',
+    what:'Brands plan seasonal shoots months ahead. Mark each brand\'s planning windows (SS, AW, Christmas, Black Friday, gifting) and bring them up at the right time.',
+    how:['Default windows per sector, adjustable per brand.','A "planning season" prompt on the owner\'s Today 8 to 10 weeks before each window.','Suggests the right deck for that season.'],
+    needs:'Agreed default windows per sector.', done:'Brands surface ahead of their seasons without manual reminders.'},
+  {id:'lookalikes', ph:3, name:'Lookalikes', grp:'How Seventy7 sells', eff:'M',
+    what:'Pick a brand you won and get similar brands you have not contacted yet.',
+    how:['Matches sector, size, location, price point and style.','Uses the Brand finder routine and checks the Known list.','Suggestions land on the Radar as "Lookalike of X", up for grabs.'],
+    needs:'Brand finder task (live).', done:'Each won brand gives 5 to 10 credible new prospects.'},
+  {id:'replies', ph:3, name:'Reply tracking', grp:'From the paid tools', eff:'L',
+    what:'Spot when a brand replies in Outlook and move it along: log the reply, cancel nudges and set the next step.',
+    how:['Read access to Seventy7 Outlook through Microsoft 365, only for emails from known brand contacts.','Stores who replied and when, never the email itself.','Fallback: a BCC address or a Log reply button.'],
+    needs:'IT and Microsoft 365 approval, data protection check.', done:'Replies show on the brand within 15 minutes, with nobody logging them.'},
+  {id:'referrals', ph:3, name:'Referral asks', grp:'How Seventy7 sells', eff:'S',
+    what:'When a client job wraps, prompt the account lead to ask for an introduction or a testimonial.',
+    how:['A Job wrapped button in Clients, or from Studio Reporting later.','Drafts the ask, with a reminder a week later.','Introductions become prospects tagged Referral.'],
+    needs:'Agreement on who presses Job wrapped.', done:'Every wrapped job creates a prompt, and referrals are tracked.'},
+  {id:'working', ph:3, name:'What\'s working', grp:'Team', eff:'M',
+    what:'Which subject lines, decks and story types lead to opens and meetings.',
+    how:['Open and meeting rates by deck, subject style, sector and story type.','Top and bottom each month, with a minimum sample so small numbers do not mislead.','Feeds Portfolio matching.'],
+    needs:'2 to 3 months of data from nudges, decks and activity.', done:'A monthly "what worked" panel the team can act on.'}
+];
+const RM_SHIPPED = [
+  ['Shared pipeline and Brands list','197 brands and their contacts from the outreach tracker'],
+  ['Today chase list','Follow-ups due, Chased, snooze'],
+  ['Tracked portfolio links','See who opened what, and when'],
+  ['Client directory and clash check','Warns before contacting a current client'],
+  ['News Radar','Daily scan at 7am, top picks, who to contact'],
+  ['Find contacts','Website inboxes found automatically, marked ✦'],
+  ['Contact research task','Weekdays 8am, fills emails and LinkedIn people'],
+  ['Brand finder task','Tue and Thu 8:30am, new London and UK brands'],
+  ['Owners and Up for grabs','Radar to Prospects, Pick it up, Mine filters']
+];
+const RM_VIZ = [['Today','"My week" strip with sparklines'],['Pipeline','Funnel bar, cards that age in colour'],['Brand','Timeline of touches, opens and replies'],['Radar','Stories by type and sector'],['Dashboard','Funnel, trend, sources, activity by person'],["What's working",'Ranked bars by deck and story type']];
+const rmStatus = id => ((S.roadmap || {}).status || {})[id] || 'planned';
+const RM_ST = {planned:'Planned', progress:'In progress', done:'Done'};
+function rmCard(f, i){
+  const st = rmStatus(f.id);
+  return `<div class="rmc ${st === 'done' ? 'done' : ''}">
+    <div class="rt"><b><span class="rn">${i}.</span>${esc(f.name)}</b>
+      ${S.isAdmin ? `<select data-rm="${f.id}">${Object.entries(RM_ST).map(([k,l]) => `<option value="${k}" ${st===k?'selected':''}>${l}</option>`).join('')}</select>` : `<span class="rm-st ${st}">${RM_ST[st]}</span>`}</div>
+    <div class="rmeta"><span class="chip">${esc(f.grp)}</span><span class="chip">Effort ${esc(f.eff)}</span>${S.isAdmin ? `<span class="rm-st ${st}">${RM_ST[st]}</span>` : ''}</div>
+    <p>${esc(f.what)}</p>
+    <details><summary>How it works</summary><ul>${f.how.map(h => `<li>${esc(h)}</li>`).join('')}</ul>
+      <div class="kv"><b>Needs:</b> ${esc(f.needs)}</div><div class="kv"><b>Done when:</b> ${esc(f.done)}</div></details>
+  </div>`;
+}
+function vRoadmap(){
+  const done = RM.filter(f => rmStatus(f.id) === 'done').length, prog = RM.filter(f => rmStatus(f.id) === 'progress').length;
+  let n = 0;
+  const ideas = ((S.roadmap || {}).ideas || []).slice().reverse();
+  return `<div class="rm-head">
+      <div><b style="font-size:15px">${done} of ${RM.length} planned features done</b><div class="small muted">${prog ? `${prog} in progress · ` : ''}${RM_SHIPPED.length} already live${S.isAdmin ? ' · change a status with its dropdown' : ''}</div></div>
+      <div class="rm-bar"><i style="width:${Math.round(done / RM.length * 100)}%"></i></div>
+    </div>
+    <div class="rm-cols">${RM_PHASES.map(ph => { const fs = RM.filter(f => f.ph === ph.k);
+      return `<div class="rm-col"><h3>${ph.t}<span class="small muted">${fs.filter(f => rmStatus(f.id) === 'done').length}/${fs.length}</span></h3><p>${ph.d}</p>${fs.map(f => rmCard(f, ++n)).join('')}</div>`; }).join('')}</div>
+    <div class="card" style="margin-top:18px;padding:16px">
+      <h3 style="margin:0 0 4px">Graphs across the app</h3><div class="small muted">Part of feature 5, so visuals run through every screen, not just the Dashboard.</div>
+      <div class="rm-viz">${RM_VIZ.map(([a,b]) => `<div><b>${esc(a)}</b>${esc(b)}</div>`).join('')}</div>
+    </div>
+    <div class="card" style="margin-top:18px;padding:16px">
+      <h3 style="margin:0 0 4px">Suggest a feature</h3><div class="small muted" style="margin-bottom:10px">Anyone on the team can add an idea here.</div>
+      <div style="display:flex;gap:8px"><input class="f" id="rm-idea" placeholder="What would make new business easier?" style="flex:1"><button class="btn dark" data-act="rm-idea">Add</button></div>
+      ${ideas.length ? `<div style="margin-top:12px">${ideas.map(x => `<div class="row" style="padding:8px 0"><div class="who"><b style="font-weight:500">${esc(x.text)}</b><span>${esc(x.by)} · ${fmtD(x.at.slice(0,10))}</span></div></div>`).join('')}</div>` : ''}
+    </div>
+    <div style="margin-top:22px"><h3 style="margin:0 0 10px;font-size:15px">Already live</h3>
+      <div class="rm-shipped">${RM_SHIPPED.map(([a,b]) => `<div>✓ ${esc(a)}<span>${esc(b)}</span></div>`).join('')}</div></div>`;
+}
+
 // ===================================================================
 //  Brand drawer
 // ===================================================================
@@ -1889,7 +2027,7 @@ document.addEventListener('click', async e => {
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
-    if (d.nav){ S.view = d.nav; if (d.nav === 'admin' && !S.radar) S.radar = await store.getRadar() || {}; render(); $('.main').scrollTop = 0; if (innerWidth <= 900) $('.nav button.on')?.scrollIntoView({inline:'center', block:'nearest'}); return; }
+    if (d.nav){ S.view = d.nav; if (d.nav === 'admin' && !S.radar) S.radar = await store.getRadar() || {}; if (d.nav === 'roadmap' && !S.roadmap) S.roadmap = await store.getRoadmap() || {}; render(); $('.main').scrollTop = 0; if (innerWidth <= 900) $('.nav button.on')?.scrollIntoView({inline:'center', block:'nearest'}); return; }
     if (d.open){ $('#gres')?.classList.add('hidden'); return openBrand(d.open); }
     if (d.pickup) return pickUp(d.pickup);
     if (d.chased) return quickChased(d.chased);
@@ -1915,6 +2053,9 @@ document.addEventListener('click', async e => {
         }
         break;
       case 'signout': store.signOut(); break;
+      case 'rm-idea': { const v = ($('#rm-idea').value || '').trim(); if (!v) break;
+        const fresh = await store.getRoadmap() || {}; const ideas = [...(fresh.ideas || []), {text: v.slice(0, 300), by: me(), at: new Date().toISOString()}];
+        S.roadmap = {...fresh, ideas}; await store.saveRoadmap({ideas}); render(); toast('Idea added'); break; }
       case 'toggle-week': S.showWeek = !S.showWeek; render(); break;
       case 'today-mine': S.f.todayMine = true; render(); break;
       case 'today-all': S.f.todayMine = false; render(); break;
@@ -2010,6 +2151,11 @@ document.addEventListener('change', async e => {
     if (k === 'name'){ v = v.trim(); if (!v) return; }
     if ((c[k] || '') !== v) await store.updateClient(c.id, {[k]: v});
     return;
+  }
+  if (t.dataset.rm){
+    const status = {...((S.roadmap || {}).status || {}), [t.dataset.rm]: t.value};
+    S.roadmap = {...(S.roadmap || {}), status}; render();
+    await store.saveRoadmap({status}); toast('Roadmap updated'); return;
   }
   if (t.dataset.bf && S.open){
     const b = byId(S.open); const k = t.dataset.bf; let v = t.value;
