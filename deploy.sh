@@ -8,5 +8,5 @@ curl -sfL -o functions/package.json "$R/functions/package.json?x=$RANDOM"
 gcloud services enable sheets.googleapis.com --project seventy7-newbiz --quiet
 (cd functions && npm install --silent --no-audit --no-fund >/dev/null 2>&1)
 npx -y firebase-tools@13 deploy --only functions --project seventy7-newbiz --non-interactive --force 2>&1 | grep -E "Successful|Deploy complete|Error" || true
-gcloud scheduler jobs run firebase-schedule-dailyRadar-europe-west2 --location europe-west2 --project seventy7-newbiz && echo RADAR_RUN_OK
+gcloud scheduler jobs run firebase-schedule-researchSync-europe-west2 --location europe-west2 --project seventy7-newbiz && echo SYNC_RUN_OK
 echo ALL_DONE

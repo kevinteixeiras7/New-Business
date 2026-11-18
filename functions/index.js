@@ -483,7 +483,8 @@ async function importResearch(){
 async function exportKnown(){
   const [b, c] = await Promise.all([db.collection('brands').get(), db.collection('clients').get()]);
   const rows = [['name', 'type'], ...b.docs.map(d => [d.data().name || '', 'Pipeline ' + (d.data().stage || '')]), ...c.docs.map(d => [d.data().name || '', 'Current client'])].filter(r => r[0]);
-  await sheets('POST', encodeURIComponent('Known!A1:B5000') + ':clear', {});
+  // Whole columns, so the range never runs past the tab's grid (a fixed A1:B5000 failed on a 2000-row tab)
+  await sheets('POST', encodeURIComponent('Known!A:B') + ':clear', {});
   await sheets('PUT', encodeURIComponent(`Known!A1:B${rows.length}`) + '?valueInputOption=RAW', { values: rows });
   return rows.length - 1;
 }
@@ -522,7 +523,7 @@ async function importProspects(){
 
 exports.researchSync = onSchedule(
   { schedule: '*/30 7-19 * * 1-5', timeZone: 'Europe/London', timeoutSeconds: 300, memory: '256MiB' },
-  async () => { await importResearch(); await importProspects(); try { await exportKnown(); } catch (e) { logger.warn('known', e.message); } }
+  async () => { await importResearch(); await importProspects(); try { logger.info('Known refreshed', { rows: await exportKnown() }); } catch (e) { logger.error('Known refresh failed', e.message); } }
 );
 
 exports.findContact = onCall({ timeoutSeconds: 120, memory: '256MiB', maxInstances: 4 }, async (req) => {
