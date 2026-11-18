@@ -109,6 +109,9 @@ label.l{display:block;font-size:11px;font-weight:600;text-transform:uppercase;le
 .bc:hover{border-color:#cfcbc2}
 .bc b{display:block;font-size:13px;margin-bottom:5px}
 .bc .who{font-size:12px;color:var(--muted,#777);margin:-2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.own{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#111;color:#fff;font-size:10px;font-weight:600;letter-spacing:.02em;vertical-align:middle;flex:none}
+.bc .bct{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.bc .bct b{margin-bottom:5px}
 .bc .meta{display:flex;justify-content:space-between;align-items:center;gap:6px}
 .bc.dragging{opacity:.4}
 .col .more{text-align:center;padding:6px;font-size:12px;color:var(--muted)}
@@ -312,6 +315,24 @@ const STUDIO_REPORTING_URL = 'https://kevinteixeiras7.github.io/Studio-Reporting
 const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const ADMINS = ['kevin.teixeira@seventy7group.com'];   // must match firestore.rules
 const DOMAIN = 'seventy7group.com';
+const TEAM = [['kevin.teixeira','Kevin Teixeira'],['kelly.primrose','Kelly Primrose'],['kate.obrien',"Kate O'Brien"],['emily.harvey','Emily Harvey'],['jayne.riley','Jayne Riley'],['kira.jones','Kira Jones']]
+  .map(([u, n]) => ({email: `${u}@seventy7group.com`, name: n}));
+const ownerName = e => (TEAM.find(t => t.email === (e || '').toLowerCase()) || {}).name || (e ? e.split('@')[0] : '');
+const initials = n => (n || '').split(/\s+/).map(x => x[0] || '').join('').slice(0, 2).toUpperCase();
+const myEmail = () => (S.user?.email || '').toLowerCase();
+const upForGrabs = b => !b.owner && b.stage === 'Prospect' && !!b.lastSignal;
+function ownerTag(b){
+  if (b.owner) return `<span class="own" title="${esc(ownerName(b.owner))} has this">${esc(initials(ownerName(b.owner)))}</span>`;
+  return upForGrabs(b) ? '<span class="chip blue" title="Added from the Radar, nobody has picked it up yet">Up for grabs</span>' : '';
+}
+function ownerOptions(sel, grabsLabel = 'Nobody yet (up for grabs)'){
+  return `<option value="" ${!sel?'selected':''}>${grabsLabel}</option>` + TEAM.map(t => `<option value="${t.email}" ${sel===t.email?'selected':''}>${esc(t.name)}${t.email === myEmail() ? ' (me)' : ''}</option>`).join('');
+}
+async function pickUp(id){
+  const b = byId(id); if (!b) return;
+  await store.update(id, {owner: myEmail(), nextFollowUp: b.nextFollowUp && b.nextFollowUp > today() ? b.nextFollowUp : today()}, entry('Note', `${me()} picked this up`));
+  toast(`${b.name} is yours. It's on your chase list today.`);
+}
 
 const STAGES = ['Prospect','Contacted','Portfolio Sent','Meeting','Proposal','Won','Lost','Paused'];
 const BOARD = ['Prospect','Contacted','Portfolio Sent','Meeting','Proposal','Won','Lost'];
@@ -389,7 +410,7 @@ function toast(msg){
 // ---------- state ----------
 const S = {
   user:null, isAdmin:false, brands:[], signals:[], view:'today', open:null, editingContact:null,
-  f:{ sector:'', stage:'', prio:'', q:'', sort:'nextFollowUp', dir:1, showPaused:false, sigType:'', sigStatus:'new', cstatus:'' },
+  f:{ sector:'', stage:'', prio:'', q:'', sort:'nextFollowUp', dir:1, showPaused:false, owner:'', todayMine:false, sigType:'', sigStatus:'new', cstatus:'' },
   radar:null, scanning:false, links:[], clicks:[], clients:[], openClient:null, editingCC:null
 };
 const byId = id => S.brands.find(b => b.id === id);
@@ -876,7 +897,8 @@ function hotPanel(){
 
 function vToday(){
   const t = today(), wk = addDays(t, 7);
-  const live = S.brands.filter(b => !['Won','Lost','Paused'].includes(b.stage));
+  const live = S.brands.filter(b => !['Won','Lost','Paused'].includes(b.stage) && (!S.f.todayMine || b.owner === myEmail()));
+  const grabs = S.brands.filter(upForGrabs).sort((a,b) => ((b.lastSignal||{}).date || '').localeCompare((a.lastSignal||{}).date || ''));
   const due = live.filter(b => b.nextFollowUp && b.nextFollowUp <= t).sort((a,b) => a.nextFollowUp.localeCompare(b.nextFollowUp) || STAGES.indexOf(b.stage) - STAGES.indexOf(a.stage));
   const overdue = due.filter(b => b.nextFollowUp < t);
   const soon = live.filter(b => b.nextFollowUp && b.nextFollowUp > t && b.nextFollowUp <= wk).sort((a,b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
@@ -898,7 +920,7 @@ function vToday(){
     <div style="display:flex;flex-direction:column;gap:18px">
       ${hotPanel()}
       <div class="card">
-        <div class="panel-h"><h3>Chase today</h3><span class="small muted">Chased logs it and sets the next date</span></div>
+        <div class="panel-h"><h3>Chase today</h3><div class="seg" style="margin:0;padding:2px"><button class="${S.f.todayMine?'':'on'}" data-act="today-all">Everyone</button><button class="${S.f.todayMine?'on':''}" data-act="today-mine">Mine</button></div></div>
         ${due.length ? due.map(b => brandRow(b, {quick:true})).join('') : '<div class="empty">Nothing due. Nice.</div>'}
       </div>
       <div class="card">
@@ -911,6 +933,11 @@ function vToday(){
         <div class="panel-h"><h3>Fresh on the radar</h3><button class="btn sm ghost" data-nav="radar">See all ${groupSigs(S.signals.filter(x => x.status === 'new')).length}</button></div>
         ${sigs.length ? groupSigs(sigs).filter(g => !clientInTitle(g[0].title)).slice(0, 4).map(radarMini).join('') : `<div class="empty">${S.signals.length ? 'No new signals. The radar scans every morning at 7am.' : "The news radar isn't switched on yet."}</div>`}
       </div>
+      ${grabs.length ? `<div class="card">
+        <div class="panel-h"><h3>Up for grabs</h3><span class="small muted">From the Radar, nobody has it yet</span></div>
+        ${grabs.slice(0, 5).map(b => `<div class="row"><div class="who" data-open="${b.id}"><b>${esc(b.name)}</b><span>${esc(b.sector)} · ${esc(cleanTitle((b.lastSignal||{}).title || ''))}</span></div><div class="acts"><button class="btn sm dark" data-pickup="${b.id}">Pick it up</button></div></div>`).join('')}
+        ${grabs.length > 5 ? `<div class="more-row"><button class="btn sm ghost" data-act="see-grabs">See all ${grabs.length}</button></div>` : ''}
+      </div>` : ''}
       <div class="card">
         <div class="panel-h"><h3>Ready to contact</h3><button class="btn sm ghost" data-nav="find">${needsContact} need a contact</button></div>
         ${ready.length ? ready.map(b => brandRow(b, {due:false, email:true})).join('') : '<div class="empty">No prospects with an email yet.</div>'}
@@ -923,6 +950,7 @@ function vToday(){
 function filtered(){
   const f = S.f, q = f.q.toLowerCase();
   return S.brands.filter(b =>
+    (!f.owner || (f.owner === 'grabs' ? upForGrabs(b) : f.owner === 'mine' ? b.owner === myEmail() : b.owner === f.owner)) &&
     (!f.sector || b.sector === f.sector) && (!f.prio || b.priority === f.prio) && (!f.stage || b.stage === f.stage) &&
     (!q || b.name.toLowerCase().includes(q) || (b.contacts||[]).some(c => (c.name+' '+c.email+' '+c.title).toLowerCase().includes(q))));
 }
@@ -933,7 +961,8 @@ function filterBar(withStage){
     <select data-f="sector"><option value="">All sectors</option>${SECTORS.map(s => `<option ${f.sector===s?'selected':''}>${s}</option>`).join('')}</select>
     ${withStage ? `<select data-f="stage"><option value="">All stages</option>${STAGES.map(s => `<option ${f.stage===s?'selected':''}>${s}</option>`).join('')}</select>` : ''}
     <select data-f="prio"><option value="">Any priority</option>${PRIORITIES.map(s => `<option ${f.prio===s?'selected':''}>${s}</option>`).join('')}</select>
-    ${(f.q||f.sector||f.stage||f.prio) ? '<button class="btn sm ghost" data-act="clear-f">Clear</button>' : ''}
+    <select data-f="owner"><option value="">Everyone's</option><option value="mine" ${f.owner==='mine'?'selected':''}>Mine</option><option value="grabs" ${f.owner==='grabs'?'selected':''}>Up for grabs (${S.brands.filter(upForGrabs).length})</option>${TEAM.map(t => `<option value="${t.email}" ${f.owner===t.email?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+    ${(f.q||f.sector||f.stage||f.prio||f.owner) ? '<button class="btn sm ghost" data-act="clear-f">Clear</button>' : ''}
   </div>`;
 }
 function vPipeline(){
@@ -947,7 +976,8 @@ function vPipeline(){
     return `<div class="col" data-col="${st}">
       <div class="col-h">${st}<span>${items.length}</span></div>
       ${items.slice(0, cap).map(b => `<div class="bc" draggable="true" data-card="${b.id}">
-        <b>${esc(b.name)} ${clashChip(b)}</b>
+        <div class="bct"><b>${esc(b.name)} ${clashChip(b)}</b>${b.owner ? ownerTag(b) : ''}</div>
+        ${upForGrabs(b) ? '<div style="margin:-2px 0 6px">' + ownerTag(b) + '</div>' : ''}
         ${(() => { const cs = b.contacts||[]; const c = cs.find(x => x.main) || cs[0]; return c ? `<div class="who" title="${esc(cs.map(x => x.name || x.email).join(', '))}">${esc(c.name || c.email || '')}${cs.length > 1 ? ` +${cs.length-1}` : ''}</div>` : '<div class="who">No contact yet</div>'; })()}
         <div class="meta"><span class="chip">${esc(b.sector)}</span>${['Won','Lost','Paused','Prospect'].includes(st) ? prioChip(b.priority) : dueLabel(b.nextFollowUp)}</div>
       </div>`).join('')}
@@ -979,7 +1009,7 @@ function vBrands(){
     <tbody>${list.map(b => {
       const flags = (b.contacts||[]).filter(c => c.flag).length;
       return `<tr class="click" data-open="${b.id}">
-      <td><b>${esc(b.name)}</b> ${clashChip(b)}</td><td>${esc(b.sector)}</td><td>${stageChip(b.stage)}</td><td>${prioChip(b.priority) || '<span class="muted small">Medium</span>'}</td>
+      <td><b>${esc(b.name)}</b> ${clashChip(b)} ${ownerTag(b)}</td><td>${esc(b.sector)}</td><td>${stageChip(b.stage)}</td><td>${prioChip(b.priority) || '<span class="muted small">Medium</span>'}</td>
       <td>${(b.contacts||[]).length || '<span class="chip warn">None</span>'} ${flags ? `<span class="chip warn" title="Contact details to check">${flags} to check</span>` : ''}</td>
       <td class="small">${b.lastContact ? fmtD(b.lastContact) : '<span class="muted">Never</span>'}</td>
       <td>${['Won','Lost','Paused'].includes(b.stage) ? '' : dueLabel(b.nextFollowUp)}</td></tr>`;}).join('')}</tbody></table>
@@ -1126,7 +1156,7 @@ function primaryActs(s, g, who, b){
   const email = who.main || sigFound(s).email;
   return `${email ? `<button class="btn sm dark" data-sig-email="${s.id}" data-group="${grp}">Email ${esc(who.main ? (firstName(who.main.name) || 'them') : 'inbox')}</button>` : ''}
     <button class="btn sm ${email ? '' : 'dark'}" data-sig-li="${s.id}" data-group="${grp}" title="Copies a short message with your tracked portfolio link and opens LinkedIn">Send on LinkedIn</button>
-    <button class="btn sm ghost" data-sig-add="${s.id}" data-group="${grp}" title="${b ? 'Put it on today\'s chase list' : 'Save to your contact list'}">${b ? 'Chase' : 'Save'}</button>`;
+    <button class="btn sm ghost" data-sig-add="${s.id}" data-group="${grp}" title="${b ? 'Put it on today\'s chase list' : 'Add to Prospects for someone to pick up'}">${b ? 'Chase' : '+ Prospects'}</button>`;
 }
 function radarRow(g){
   const s = g[0], name = sigBrandName(s), b = s.brandId && byId(s.brandId), cl = clientInTitle(s.title);
@@ -1139,7 +1169,7 @@ function radarRow(g){
     <span class="small muted rr-when">${dayAgo(s.published)}</span>
     <div class="rr-act">
       ${cl ? '' : (() => { const grp = g.map(x => x.id).join(','), em = sigFound(s).email || (b && (b.contacts || []).some(c => c.email));
-        return `${em ? `<button class="btn sm" data-sig-email="${s.id}" data-group="${grp}" title="Email them">Email</button>` : `<button class="btn sm" data-sig-li="${s.id}" data-group="${grp}" title="Send your portfolio on LinkedIn">LinkedIn</button>`}<button class="btn sm ghost" data-sig-add="${s.id}" data-group="${grp}" title="Save to your contact list">Save</button>`; })()}
+        return `${em ? `<button class="btn sm" data-sig-email="${s.id}" data-group="${grp}" title="Email them">Email</button>` : `<button class="btn sm" data-sig-li="${s.id}" data-group="${grp}" title="Send your portfolio on LinkedIn">LinkedIn</button>`}<button class="btn sm ghost" data-sig-add="${s.id}" data-group="${grp}" title="Add to Prospects for someone to pick up">+ Prospects</button>`; })()}
       <button class="btn sm ghost" data-sig-dismiss="${s.id}" data-group="${g.map(x => x.id).join(',')}" title="Not relevant">✕</button>
     </div>
   </div>`;
@@ -1150,7 +1180,7 @@ function radarMini(g){
   return `<div class="rm">
     <div class="rm-main"><div class="rm-top"><b>${name ? esc(name) : 'Brand to confirm'}</b><span class="chip ${TYPE_CLASS[s.type]||''}">${esc(s.type)}</span>${s.score >= 8 ? '<span class="rm-hot">Strong</span>' : ''}</div>
       <div class="rm-why">${esc(sigInfo(s).why)}</div></div>
-    <button class="btn sm" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}">${b ? 'Chase' : 'Add'}</button>
+    <button class="btn sm" data-sig-add="${s.id}" data-group="${g.map(x => x.id).join(',')}">${b ? 'Chase' : '+ Prospects'}</button>
   </div>`;
 }
 function contactListRows(){
@@ -1265,17 +1295,19 @@ async function sigAdd(id, groupIds){
     return;
   }
   const guess = sigBrandName(s);
-  modal(`<h3>Add to your contact list</h3>
+  modal(`<h3>Add to Prospects</h3>
     <p class="small muted" style="margin:-4px 0 14px">${esc(cleanTitle(s.title))}</p>
     <label class="l">Brand name</label><input class="f" id="m-name" value="${esc(guess)}" placeholder="Who is the story about?">
     <div class="grid2" style="margin-top:12px">
       <div><label class="l">Sector</label><select class="f" id="m-sector">${SECTORS.map(x => `<option ${x===(s.sector||'Other')?'selected':''}>${x}</option>`).join('')}</select></div>
       <div><label class="l">Priority</label><select class="f" id="m-prio">${PRIORITIES.map(x => `<option ${x===(s.score >= 8 ? 'High' : 'Medium')?'selected':''}>${x}</option>`).join('')}</select></div>
     </div>
+    <label class="l" style="margin-top:12px">Who picks it up?</label><select class="f" id="m-owner">${ownerOptions('')}</select>
     <label class="l" style="margin-top:12px">Who to contact <span class="muted">(optional)</span></label>
     <div class="grid2"><input class="f" id="m-cname" value="${esc(who.name || '')}" placeholder="Name, if you know it"><input class="f" id="m-crole" value="${esc(who.role || '')}" placeholder="Job title"></div>
-    <p class="small muted" style="margin:8px 0 0">It goes on Today's chase list, and the story becomes the opening line of your email.</p>`, async () => {
+    <p class="small muted" style="margin:8px 0 0">It goes into Prospects. Left up for grabs, anyone on the team can pick it up from Today or the Pipeline. The story becomes the opening line of the email.</p>`, async () => {
       const name = $('#m-name').value.trim(); if (!name){ toast('Add the brand name'); return false; }
+      const owner = $('#m-owner').value;
       const cname = $('#m-cname').value.trim(), crole = $('#m-crole').value.trim();
       const contact = cname ? [{name: cname, title: crole, email:'', phone:'', linkedin:'', flag:''}] : [];
       const existing = S.brands.find(b => b.name.toLowerCase() === name.toLowerCase());
@@ -1284,12 +1316,12 @@ async function sigAdd(id, groupIds){
         bid = existing.id;
         const contacts = [...(existing.contacts || [])];
         if (cname && !contacts.some(c => (c.name||'').toLowerCase() === cname.toLowerCase())) contacts.push(contact[0]);
-        await store.update(bid, {nextFollowUp: today(), lastSignal, contacts}, entry('Signal', `${s.type}: ${s.title}`));
+        await store.update(bid, {nextFollowUp: today(), lastSignal, contacts, ...(owner && !existing.owner ? {owner} : {})}, entry('Signal', `${s.type}: ${s.title}`));
       } else bid = await store.create({...newBrand({name, sector: $('#m-sector').value, priority: $('#m-prio').value, nextFollowUp: today(),
-        notes: `Found via radar: ${s.title}\n${s.link}${!cname && crole ? `\nWho to contact: ${crole}` : ''}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}), contacts: contact, lastSignal});
+        notes: `Found via radar: ${s.title}\n${s.link}${!cname && crole ? `\nWho to contact: ${crole}` : ''}`, log:[entry('Signal', `${s.type}: ${s.title}`)]}), contacts: contact, lastSignal, owner});
       await markSigs(ids, {status:'added', brandId: bid});
-      toast(`${name} added to your contact list`);
-    }, 'Add to list');
+      toast(owner ? `${name} added to Prospects for ${firstName(ownerName(owner))}` : `${name} added to Prospects, up for grabs`);
+    }, 'Add to Prospects');
 }
 // Make sure the story's brand is in the app, with any contacts the radar found
 async function ensureBrand(s, groupIds){
@@ -1308,10 +1340,10 @@ async function ensureBrand(s, groupIds){
     bid = b.id;
     const contacts = [...(b.contacts || [])];
     found.forEach(c => { if (!contacts.some(x => (c.email && x.email === c.email) || (c.name && (x.name || '').toLowerCase() === c.name.toLowerCase()))) contacts.push(c); });
-    await store.update(bid, {lastSignal, contacts, ...(f.website && !b.website ? {website: f.website} : {}), ...(b.nextFollowUp ? {} : {nextFollowUp: today()})}, entry('Signal', `${s.type}: ${s.title}`));
+    await store.update(bid, {lastSignal, contacts, ...(b.owner ? {} : {owner: myEmail()}), ...(f.website && !b.website ? {website: f.website} : {}), ...(b.nextFollowUp ? {} : {nextFollowUp: today()})}, entry('Signal', `${s.type}: ${s.title}`));
   } else {
     bid = await store.create({...newBrand({name, sector: s.sector || 'Other', priority: s.score >= 8 ? 'High' : 'Medium', nextFollowUp: today(),
-      notes: `Found via radar: ${s.title}\n${s.link}`, log: [entry('Signal', `${s.type}: ${s.title}`)]}), contacts: found, lastSignal, website: f.website || ''});
+      notes: `Found via radar: ${s.title}\n${s.link}`, log: [entry('Signal', `${s.type}: ${s.title}`)]}), contacts: found, lastSignal, website: f.website || '', owner: myEmail()});
   }
   await markSigs(ids, {status:'added', brandId: bid});
   return bid;
@@ -1751,6 +1783,8 @@ function renderDrawer(){
       <div class="sec"><h4>Stage</h4>
         <div class="stagebar">${STAGES.map(s => `<button data-stage="${s}" class="${b.stage===s?'on':''}">${s}</button>`).join('')}</div>
         <div class="grid2" style="margin-top:14px">
+          <div><label class="l">Who has it</label><div style="display:flex;gap:6px"><select class="f" data-bf="owner">${ownerOptions(b.owner || '', 'Nobody yet')}</select>${b.owner !== myEmail() ? `<button class="btn sm dark" data-pickup="${b.id}" style="white-space:nowrap">${b.owner ? 'Take it' : 'Pick it up'}</button>` : ''}</div></div>
+          <div></div>
           <div><label class="l">Next follow-up</label><input type="date" class="f" data-bf="nextFollowUp" value="${b.nextFollowUp||''}"></div>
           <div><label class="l">Last contact</label><div style="padding:8px 0">${b.lastContact ? fmtD(b.lastContact) + ` <span class="muted small">(${daysBetween(b.lastContact, today())} days ago)</span>` : '<span class="muted">Never</span>'}</div></div>
         </div>
@@ -1851,12 +1885,13 @@ function modal(html, onOk, okLabel = 'Save'){
 //  Events
 // ===================================================================
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-sig-email],[data-sig-undo],[data-sig-li],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit]');
+  const t = e.target.closest('[data-nav],[data-act],[data-open],[data-chased],[data-snooze],[data-stage],[data-sort],[data-sig-add],[data-sig-dismiss],[data-sig-email],[data-sig-undo],[data-sig-li],[data-edit-contact],[data-compose],[data-cp],[data-open-client],[data-ce],[data-cc-edit],[data-pickup]');
   if (!t) { if (!e.target.closest('.search')) $('#gres')?.classList.add('hidden'); return; }
   const d = t.dataset;
   try {
     if (d.nav){ S.view = d.nav; if (d.nav === 'admin' && !S.radar) S.radar = await store.getRadar() || {}; render(); $('.main').scrollTop = 0; if (innerWidth <= 900) $('.nav button.on')?.scrollIntoView({inline:'center', block:'nearest'}); return; }
     if (d.open){ $('#gres')?.classList.add('hidden'); return openBrand(d.open); }
+    if (d.pickup) return pickUp(d.pickup);
     if (d.chased) return quickChased(d.chased);
     if (d.snooze) return snooze(d.snooze, Number(d.days));
     if (d.stage) return setStage(S.open, d.stage);
@@ -1881,6 +1916,9 @@ document.addEventListener('click', async e => {
         break;
       case 'signout': store.signOut(); break;
       case 'toggle-week': S.showWeek = !S.showWeek; render(); break;
+      case 'today-mine': S.f.todayMine = true; render(); break;
+      case 'today-all': S.f.todayMine = false; render(); break;
+      case 'see-grabs': S.f.owner = 'grabs'; S.view = 'pipeline'; render(); break;
       case 'spread': spreadReview(); break;
       case 'tidy': tidyReview(); break;
       case 'find-one': await findOne(d.id); break;
@@ -1893,7 +1931,7 @@ document.addEventListener('click', async e => {
       case 'rtype': S.f.sigType = d.v; S.radarMore = 0; render(); break;
       case 'rmore': S.radarMore = (S.radarMore || 25) + 25; render(); break;
       case 'close': closeDrawer(); break;
-      case 'clear-f': Object.assign(S.f, {q:'', sector:'', stage:'', prio:''}); render(); break;
+      case 'clear-f': S.f.owner = ''; Object.assign(S.f, {q:'', sector:'', stage:'', prio:''}); render(); break;
       case 'toggle-paused': S.f.showPaused = t.checked; render(); break;
       case 'add-contact': S.editingContact = 'new'; renderDrawer(); setTimeout(() => $('#c-name')?.focus(), 0); break;
       case 'cancel-contact': S.editingContact = null; renderDrawer(); break;
@@ -1977,7 +2015,7 @@ document.addEventListener('change', async e => {
     const b = byId(S.open); const k = t.dataset.bf; let v = t.value;
     if (k === 'name'){ v = v.trim(); if (!v) return render(); }
     if ((b[k] || '') === v) return;
-    await store.update(b.id, {[k]: v || (k === 'nextFollowUp' ? null : '')}, k === 'nextFollowUp' ? entry('Snooze', v ? `Follow-up set to ${fmtD(v)}` : 'Follow-up cleared') : null);
+    await store.update(b.id, {[k]: v || (k === 'nextFollowUp' ? null : '')}, k === 'nextFollowUp' ? entry('Snooze', v ? `Follow-up set to ${fmtD(v)}` : 'Follow-up cleared') : k === 'owner' ? entry('Note', v ? `Handed to ${ownerName(v)}` : 'Put back up for grabs') : null);
   }
 });
 
